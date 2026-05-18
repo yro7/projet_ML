@@ -280,3 +280,34 @@ def default_fft_pca_param_grid():
         "n_components": [5, 10, 20],
         "scale": [False, True],
     }
+
+
+def default_stft_param_grid():
+    return {
+        "stat": ["mean", "max"],
+        "idx_frequence_max": [500, 1_000, None],
+        "nperseg": [200, DEFAULT_STFT_NPERSEG],
+    }
+
+
+def default_mfcc_param_grid():
+    return {
+        "stat": ["mean", "max"],
+        "n_mfcc": [8, DEFAULT_N_MFCC, 20],
+    }
+
+
+PREPROCESSOR_PARAM_GRIDS = {
+    "fft_pca": default_fft_pca_param_grid,
+    "stft": default_stft_param_grid,
+    "mfcc": default_mfcc_param_grid,
+}
+
+
+def get_preprocessor_param_grid(name):
+    """Return the default unprefixed parameter grid for a registered preprocessor."""
+
+    if name not in PREPROCESSOR_PARAM_GRIDS:
+        valid_names = ", ".join(sorted(PREPROCESSOR_PARAM_GRIDS))
+        raise ValueError(f"Unknown preprocessor grid '{name}'. Expected one of: {valid_names}")
+    return {param: list(values) for param, values in PREPROCESSOR_PARAM_GRIDS[name]().items()}

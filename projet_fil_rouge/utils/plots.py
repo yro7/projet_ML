@@ -35,6 +35,45 @@ def plot_confusion_matrix(y_true, y_pred, labels=WORDS, title=None, ax=None, cma
     return ax
 
 
+def _result_confusion_matrix(result, split):
+    metrics = result.get(f"{split}_metrics", {})
+    if "confusion_matrix" in metrics:
+        return np.asarray(metrics["confusion_matrix"])
+
+    y_true = result.get(f"y_{split}")
+    y_pred = result.get(f"y_{split}_pred")
+    if y_true is not None and y_pred is not None:
+        return confusion_matrix(y_true, y_pred)
+    return None
+
+
+def plot_benchmark_result(result, labels=None, title_prefix=""):
+    """Plot train/test confusion matrices already present in a benchmark result."""
+
+    matrices = []
+    for split, label in (("train", "Train"), ("test", "Test")):
+        matrix = _result_confusion_matrix(result, split)
+        if matrix is not None:
+            matrices.append((label, matrix))
+
+    if not matrices:
+        raise ValueError("No train/test confusion matrix found in result")
+
+    fig, axes = plt.subplots(1, len(matrices), figsize=(5 * len(matrices), 4))
+    axes = np.atleast_1d(axes)
+    default_labels = WORDS if labels is None else labels
+
+    for ax, (split_label, matrix) in zip(axes, matrices):
+        display_labels = default_labels if default_labels is not None and len(default_labels) == matrix.shape[0] else None
+        display = ConfusionMatrixDisplay(confusion_matrix=matrix, display_labels=display_labels)
+        display.plot(cmap="Blues", ax=ax, colorbar=False)
+        title = f"Matrice de confusion {split_label.lower()}"
+        ax.set_title(f"{title_prefix} - {title}" if title_prefix else title)
+
+    fig.tight_layout()
+    return fig, axes
+
+
 def show_subplots_for_transformed_data(
     transformed_data,
     y,

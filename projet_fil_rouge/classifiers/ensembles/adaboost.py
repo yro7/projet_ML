@@ -99,3 +99,17 @@ class ScratchAdaBoostClassifier(BaseEstimator, ClassifierMixin):
             scores += alpha * estimator.predict(X)
         signed_pred = np.where(scores >= 0, 1, -1)
         return np.where(signed_pred == -1, self.classes_[0], self.classes_[1])
+
+
+def make_scratch_classifier(base_classifier=None, n_estimators=100, random_state=RANDOM_SEED):
+    return ScratchAdaBoostClassifier(
+        base_classifier=base_classifier,
+        n_estimators=n_estimators,
+        random_state=random_state,
+    )
+
+
+def default_scratch_param_grid():
+    return {
+        "n_estimators": [25, 50, 100],
+    }
