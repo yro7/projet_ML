@@ -1,14 +1,22 @@
 """Main fonction qui orchestre le reste du projet"""
 
+from torch.utils.hipify.hipify_python import preprocessor
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
+from sklearn.tree import DecisionTreeClassifier
 
 try:
+    from .classifiers.ensembles.bagging import BaggingClassifier
+    from .classifiers.logistic_regression import make_classifier as make_logistic_regression
+    from .classifiers.svm import make_classifier as make_svm
     from .config import RANDOM_SEED, WORDS, seed_everything
     from .data import load_dataset
     from .evaluation.benchmark import run_grid_search, train_test_benchmark
     from .evaluation.manual_cv import manual_loo_score
 except ImportError:  # Pr faire python3 main.py from projet_fil_rouge/
+    from classifiers.ensembles.bagging import BaggingClassifier
+    from classifiers.logistic_regression import make_classifier as make_logistic_regression
+    from classifiers.svm import make_classifier as make_svm
     from config import RANDOM_SEED, WORDS, seed_everything
     from data import load_dataset
     from evaluation.benchmark import run_grid_search, train_test_benchmark
@@ -60,7 +68,7 @@ def main():
             "n_components": [5, 10],
             "scale": [True],
         },
-        classifier="svm",
+        classifier=make_svm,
         classifier_param_grid={
             "C": [0.1, 1.0],
             "gamma": ["scale"],
@@ -100,7 +108,6 @@ def main():
             "scale": False,
         },
         classifier="bagging_tree",
-        classifier_params={"n_estimators": 25, "max_depth": 2},
         test_size=0.2,
         random_state=RANDOM_SEED,
     )
