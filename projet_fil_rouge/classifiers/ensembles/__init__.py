@@ -1,1 +1,1 @@
-"""Composable ensemble classifiers."""
+"""Composable ensemble classifiers"""

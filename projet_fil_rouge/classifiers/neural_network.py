@@ -1,9 +1,4 @@
-"""Neural network classifier definition.
-
-This uses sklearn's MLPClassifier to keep the common fit/predict contract.
-Torch-specific exercises can still live in notebooks or a later dedicated
-module without changing evaluation code.
-"""
+"""Neural network classifier definition."""
 
 from sklearn.neural_network import MLPClassifier
 

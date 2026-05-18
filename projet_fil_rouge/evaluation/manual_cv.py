@@ -4,6 +4,11 @@ import numpy as np
 from sklearn.model_selection import ParameterGrid
 
 try:
+    from ..classifiers import make_classifier
+except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_rouge/
+    from classifiers import make_classifier
+
+try:
     from ..utils.preprocessings import make_preprocessor
 except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_rouge/
     from utils.preprocessings import make_preprocessor
@@ -26,7 +31,7 @@ def manual_loo_score(
     X_raw,
     y,
     preprocessor,
-    classifier_factory,
+    classifier,
     preprocessor_params=None,
     classifier_params=None,
     verbose=False,
@@ -55,9 +60,9 @@ def manual_loo_score(
         preprocessor_estimator = make_preprocessor(preprocessor, **preprocessor_params)
         X_train, X_valid = _fit_transform_preprocessor(preprocessor_estimator, X_train_raw, X_valid_raw)
 
-        classifier = classifier_factory(**classifier_params)
-        classifier.fit(X_train, y_train)
-        pred = classifier.predict(X_valid)
+        classifier_estimator = make_classifier(classifier, **classifier_params)
+        classifier_estimator.fit(X_train, y_train)
+        pred = classifier_estimator.predict(X_valid)
 
         y_pred.extend(pred)
         fold_score = float(np.mean(pred == y_valid))
@@ -80,7 +85,7 @@ def manual_grid_search(
     X_raw,
     y,
     preprocessor,
-    classifier_factory,
+    classifier,
     preprocessor_param_grid=None,
     classifier_param_grid=None,
     verbose=False,
@@ -101,7 +106,7 @@ def manual_grid_search(
                 X_raw=X_raw,
                 y=y,
                 preprocessor=preprocessor,
-                classifier_factory=classifier_factory,
+                classifier=classifier,
                 preprocessor_params=preprocessor_params,
                 classifier_params=classifier_params,
                 verbose=False,

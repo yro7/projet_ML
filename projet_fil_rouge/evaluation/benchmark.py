@@ -13,6 +13,11 @@ except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_
     from evaluation.metrics import classification_summary
 
 try:
+    from ..classifiers import make_classifier
+except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_rouge/
+    from classifiers import make_classifier
+
+try:
     from ..utils.preprocessings import make_preprocessor
 except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_rouge/
     from utils.preprocessings import make_preprocessor
@@ -37,19 +42,19 @@ def _split_best_params(best_params):
     return grouped
 
 
-def build_estimator_pipeline(classifier_factory, preprocessor=None):
+def build_estimator_pipeline(classifier, preprocessor=None):
     """Build a sklearn Pipeline from optional preprocessor and classifier."""
 
     steps = []
     preprocessor_estimator = make_preprocessor(preprocessor)
     if preprocessor_estimator is not None:
         steps.append(("preprocessor", preprocessor_estimator))
-    steps.append(("classifier", classifier_factory()))
+    steps.append(("classifier", make_classifier(classifier)))
     return Pipeline(steps)
 
 
 def run_grid_search(
-    classifier_factory,
+    classifier,
     classifier_param_grid,
     X_train,
     y_train,
@@ -68,7 +73,7 @@ def run_grid_search(
         raise ValueError("preprocessor_param_grid requires a preprocessor")
 
     estimator = build_estimator_pipeline(
-        classifier_factory=classifier_factory,
+        classifier=classifier,
         preprocessor=preprocessor,
     )
     param_grid = {}
@@ -108,7 +113,7 @@ def run_grid_search(
 def train_test_benchmark(
     X_raw,
     y,
-    classifier_factory,
+    classifier,
     classifier_params=None,
     preprocessor=None,
     preprocessor_params=None,
@@ -136,15 +141,16 @@ def train_test_benchmark(
         X_train = preprocessor_estimator.fit_transform(X_train_raw)
         X_test = preprocessor_estimator.transform(X_test_raw)
 
-    classifier = classifier_factory(**(classifier_params or {}))
-    classifier.fit(X_train, y_train)
-    y_train_pred = classifier.predict(X_train)
-    y_test_pred = classifier.predict(X_test)
+    classifier_estimator = make_classifier(classifier, **(classifier_params or {}))
+    classifier_estimator.fit(X_train, y_train)
+    y_train_pred = classifier_estimator.predict(X_train)
+    y_test_pred = classifier_estimator.predict(X_test)
 
     return {
         "preprocessor": preprocessor,
         "preprocessor_estimator": preprocessor_estimator,
         "classifier": classifier,
+        "classifier_estimator": classifier_estimator,
         "X_train": X_train,
         "X_test": X_test,
         "y_train": y_train,

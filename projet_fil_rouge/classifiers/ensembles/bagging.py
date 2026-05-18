@@ -1,9 +1,10 @@
-"""Composable bagging meta-classifier."""
+"""Composable bagging meta-classifier"""
 
 import copy
 
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin, clone
+from sklearn.tree import DecisionTreeClassifier
 
 try:
     from ...config import RANDOM_SEED
@@ -74,7 +75,33 @@ def make_classifier(base_classifier, n_estimators=100, random_state=RANDOM_SEED)
     )
 
 
+class TreeBaggingClassifier(BaggingClassifier):
+    """Bagging preset using shallow decision trees as base classifiers."""
+
+    def __init__(self, n_estimators=100, max_depth=2, random_state=RANDOM_SEED):
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.random_state = random_state
+        self.base_classifier = None
+
+    def fit(self, X, y):
+        self.base_classifier = DecisionTreeClassifier(
+            max_depth=self.max_depth,
+            random_state=self.random_state,
+        )
+        return super().fit(X, y)
+
+
+def make_tree_bagging_classifier(n_estimators=100, max_depth=2, random_state=RANDOM_SEED):
+    return TreeBaggingClassifier(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=random_state,
+    )
+
+
 def default_param_grid():
     return {
         "n_estimators": [50, 100, 200],
+        "max_depth": [1, 2, 3],
     }

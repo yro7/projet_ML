@@ -2,20 +2,13 @@
 
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
-from sklearn.tree import DecisionTreeClassifier
 
 try:
-    from .classifiers.ensembles.bagging import BaggingClassifier
-    from .classifiers.logistic_regression import make_classifier as make_logistic_regression
-    from .classifiers.svm import make_classifier as make_svm
     from .config import RANDOM_SEED, WORDS, seed_everything
     from .data import load_dataset
     from .evaluation.benchmark import run_grid_search, train_test_benchmark
     from .evaluation.manual_cv import manual_loo_score
 except ImportError:  # Pr faire python3 main.py from projet_fil_rouge/
-    from classifiers.ensembles.bagging import BaggingClassifier
-    from classifiers.logistic_regression import make_classifier as make_logistic_regression
-    from classifiers.svm import make_classifier as make_svm
     from config import RANDOM_SEED, WORDS, seed_everything
     from data import load_dataset
     from evaluation.benchmark import run_grid_search, train_test_benchmark
@@ -46,7 +39,7 @@ def main():
         y=y,
         preprocessor="fft_pca",
         preprocessor_params=preprocessor_params,
-        classifier_factory=make_logistic_regression,
+        classifier="logistic_regression",
         classifier_params={"C": 1.0},
         test_size=0.2,
         random_state=RANDOM_SEED,
@@ -67,7 +60,7 @@ def main():
             "n_components": [5, 10],
             "scale": [True],
         },
-        classifier_factory=make_svm,
+        classifier="svm",
         classifier_param_grid={
             "C": [0.1, 1.0],
             "gamma": ["scale"],
@@ -89,20 +82,13 @@ def main():
             "n_components": 5,
             "scale": False,
         },
-        classifier_factory=make_logistic_regression,
+        classifier="logistic_regression",
         classifier_params={"C": 0.1, "max_iter": 500},
     )
     print(f"Manual LOO accuracy: {loo_result['score']:.3f}")
 
     print_section("5. Binary bagging meta-classifier")
     y_binary = np.where(y == 1, 1, 0)
-
-    def make_bagging_tree():
-        return BaggingClassifier(
-            base_classifier=DecisionTreeClassifier(max_depth=2),
-            n_estimators=25,
-            random_state=RANDOM_SEED,
-        )
 
     bagging_result = train_test_benchmark(
         X_raw=X,
@@ -113,7 +99,8 @@ def main():
             "n_components": 5,
             "scale": False,
         },
-        classifier_factory=make_bagging_tree,
+        classifier="bagging_tree",
+        classifier_params={"n_estimators": 25, "max_depth": 2},
         test_size=0.2,
         random_state=RANDOM_SEED,
     )
