@@ -109,6 +109,7 @@ def load_dataset(
         raise ValueError(f"Multiple sampling frequencies found: {sorted(set(sample_rates))}")
 
     trim_length = min(len(record) for record in records) if target_length is None else target_length
+    print(f"The smallest record contains {trim_length} samples")
     X = np.vstack([energy_trim(record, trim_length) for record in records])
     y = np.asarray(labels, dtype=int)
     speaker_genres = np.asarray(speaker_genres)
