@@ -3,6 +3,11 @@
 import numpy as np
 from sklearn.model_selection import ParameterGrid
 
+try:
+    from ..utils.preprocessings import make_preprocessor
+except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_rouge/
+    from utils.preprocessings import make_preprocessor
+
 
 def _fit_transform_preprocessor(preprocessor, X_train, X_valid):
     if preprocessor is None:
@@ -20,7 +25,7 @@ def _fit_transform_preprocessor(preprocessor, X_train, X_valid):
 def manual_loo_score(
     X_raw,
     y,
-    preprocessor_factory,
+    preprocessor,
     classifier_factory,
     preprocessor_params=None,
     classifier_params=None,
@@ -32,6 +37,8 @@ def manual_loo_score(
     y = np.asarray(y)
     preprocessor_params = preprocessor_params or {}
     classifier_params = classifier_params or {}
+    if preprocessor is None and preprocessor_params:
+        raise ValueError("preprocessor_params requires a preprocessor")
 
     y_pred = []
     fold_scores = []
@@ -45,8 +52,8 @@ def manual_loo_score(
         y_train = y[train_mask]
         y_valid = y[~train_mask]
 
-        preprocessor = preprocessor_factory(**preprocessor_params) if preprocessor_factory else None
-        X_train, X_valid = _fit_transform_preprocessor(preprocessor, X_train_raw, X_valid_raw)
+        preprocessor_estimator = make_preprocessor(preprocessor, **preprocessor_params)
+        X_train, X_valid = _fit_transform_preprocessor(preprocessor_estimator, X_train_raw, X_valid_raw)
 
         classifier = classifier_factory(**classifier_params)
         classifier.fit(X_train, y_train)
@@ -72,13 +79,16 @@ def manual_loo_score(
 def manual_grid_search(
     X_raw,
     y,
-    preprocessor_factory,
+    preprocessor,
     classifier_factory,
     preprocessor_param_grid=None,
     classifier_param_grid=None,
     verbose=False,
 ):
     """Manual grid search using manual_loo_score for each parameter pair."""
+
+    if preprocessor is None and preprocessor_param_grid:
+        raise ValueError("preprocessor_param_grid requires a preprocessor")
 
     preprocessor_grid = list(ParameterGrid(preprocessor_param_grid or {}))
     classifier_grid = list(ParameterGrid(classifier_param_grid or {}))
@@ -90,7 +100,7 @@ def manual_grid_search(
             result = manual_loo_score(
                 X_raw=X_raw,
                 y=y,
-                preprocessor_factory=preprocessor_factory,
+                preprocessor=preprocessor,
                 classifier_factory=classifier_factory,
                 preprocessor_params=preprocessor_params,
                 classifier_params=classifier_params,

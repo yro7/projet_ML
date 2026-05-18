@@ -1,13 +1,4 @@
-"""Quick showcase for the refactored project architecture.
-
-Run from the repository root:
-
-    python3 -m projet_fil_rouge.main
-
-or from inside projet_fil_rouge/:
-
-    python3 main.py
-"""
+"""Main fonction qui orchestre le reste du projet"""
 
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -21,8 +12,7 @@ try:
     from .data import load_dataset
     from .evaluation.benchmark import run_grid_search, train_test_benchmark
     from .evaluation.manual_cv import manual_loo_score
-    from .utils.preprocessings import make_fft_pca_preprocessor
-except ImportError:  # Allows `python3 main.py` from projet_fil_rouge/
+except ImportError:  # Pr faire python3 main.py from projet_fil_rouge/
     from classifiers.ensembles.bagging import BaggingClassifier
     from classifiers.logistic_regression import make_classifier as make_logistic_regression
     from classifiers.svm import make_classifier as make_svm
@@ -30,7 +20,6 @@ except ImportError:  # Allows `python3 main.py` from projet_fil_rouge/
     from data import load_dataset
     from evaluation.benchmark import run_grid_search, train_test_benchmark
     from evaluation.manual_cv import manual_loo_score
-    from utils.preprocessings import make_fft_pca_preprocessor
 
 
 def print_section(title):
@@ -55,7 +44,7 @@ def main():
     logistic_result = train_test_benchmark(
         X_raw=X,
         y=y,
-        preprocessor_factory=make_fft_pca_preprocessor,
+        preprocessor="fft_pca",
         preprocessor_params=preprocessor_params,
         classifier_factory=make_logistic_regression,
         classifier_params={"C": 1.0},
@@ -72,7 +61,7 @@ def main():
     svm_grid = run_grid_search(
         X_train=X,
         y_train=y,
-        preprocessor_factory=make_fft_pca_preprocessor,
+        preprocessor="fft_pca",
         preprocessor_param_grid={
             "idx_frequence_max": [500, 1_000],
             "n_components": [5, 10],
@@ -94,7 +83,7 @@ def main():
     loo_result = manual_loo_score(
         X_raw=X,
         y=y,
-        preprocessor_factory=make_fft_pca_preprocessor,
+        preprocessor="fft_pca",
         preprocessor_params={
             "idx_frequence_max": 500,
             "n_components": 5,
@@ -118,7 +107,7 @@ def main():
     bagging_result = train_test_benchmark(
         X_raw=X,
         y=y_binary,
-        preprocessor_factory=make_fft_pca_preprocessor,
+        preprocessor="fft_pca",
         preprocessor_params={
             "idx_frequence_max": 500,
             "n_components": 5,

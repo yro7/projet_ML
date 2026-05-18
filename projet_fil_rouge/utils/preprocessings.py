@@ -8,13 +8,12 @@ _NUMBA_CACHE_DIR = Path(tempfile.gettempdir()) / "ml_fil_rouge_numba_cache"
 _NUMBA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("NUMBA_CACHE_DIR", str(_NUMBA_CACHE_DIR))
 
-import librosa
 import numpy as np
+import librosa
 from scipy import signal
 from scipy.fft import fft
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.decomposition import PCA
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 try:
@@ -57,8 +56,11 @@ def _aggregate_time(values, stat, axis=-1):
     raise ValueError("stat must be 'mean' or 'max'")
 
 
-def fft_magnitude(X, idx_frequence_max=None):
-    """Return the magnitude of the FFT, optionally truncated on frequency axis."""
+def preprocess_fft(X, idx_frequence_max=None):
+    """Return FFT magnitude features as a 2D matrix.
+
+    This is the simple API to use in notebooks and manual exercises.
+    """
 
     _validate_positive_int(idx_frequence_max, "idx_frequence_max")
     X = _ensure_2d(X)
@@ -85,14 +87,14 @@ def stft_magnitude(
     return magnitudes
 
 
-def stft_features(
+def preprocess_stft(
     X,
     stat="mean",
     idx_frequence_max=None,
     fs=DEFAULT_SAMPLE_RATE,
     nperseg=DEFAULT_STFT_NPERSEG,
 ):
-    """Aggregate STFT magnitudes over time into a 2D feature matrix."""
+    """Return aggregated STFT features as a 2D matrix."""
 
     magnitudes = stft_magnitude(
         X,
@@ -115,8 +117,8 @@ def mfcc_coefficients(X, sr=DEFAULT_SAMPLE_RATE, n_mfcc=DEFAULT_N_MFCC):
     return np.asarray(coeffs)
 
 
-def mfcc_features(X, stat="mean", sr=DEFAULT_SAMPLE_RATE, n_mfcc=DEFAULT_N_MFCC):
-    """Aggregate MFCC coefficients over time into a 2D feature matrix."""
+def preprocess_mfcc(X, stat="mean", sr=DEFAULT_SAMPLE_RATE, n_mfcc=DEFAULT_N_MFCC):
+    """Return aggregated MFCC features as a 2D matrix."""
 
     coeffs = mfcc_coefficients(X, sr=sr, n_mfcc=n_mfcc)
     return _aggregate_time(coeffs, stat=stat, axis=2)
@@ -132,7 +134,12 @@ def effective_n_components(n_components, X):
     return n_components
 
 
-def fit_transform_pca(X_train, X_test=None, n_components=DEFAULT_N_COMPONENTS, random_state=RANDOM_SEED):
+def preprocess_pca_train_test(
+    X_train,
+    X_test=None,
+    n_components=DEFAULT_N_COMPONENTS,
+    random_state=RANDOM_SEED,
+):
     """Fit PCA on train only, then transform train and optional test data."""
 
     X_train = _ensure_2d(X_train)
@@ -147,7 +154,7 @@ def fit_transform_pca(X_train, X_test=None, n_components=DEFAULT_N_COMPONENTS, r
 
 
 class FFTTransformer(BaseEstimator, TransformerMixin):
-    """sklearn transformer wrapping fft_magnitude."""
+    """sklearn transformer wrapping preprocess_fft."""
 
     def __init__(self, idx_frequence_max=None):
         self.idx_frequence_max = idx_frequence_max
@@ -156,7 +163,7 @@ class FFTTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        return fft_magnitude(X, idx_frequence_max=self.idx_frequence_max)
+        return preprocess_fft(X, idx_frequence_max=self.idx_frequence_max)
 
 
 class FFTPCAFeatureExtractor(BaseEstimator, TransformerMixin):
@@ -175,7 +182,7 @@ class FFTPCAFeatureExtractor(BaseEstimator, TransformerMixin):
         self.random_state = random_state
 
     def fit(self, X, y=None):
-        fft_features = fft_magnitude(X, idx_frequence_max=self.idx_frequence_max)
+        fft_features = preprocess_fft(X, idx_frequence_max=self.idx_frequence_max)
         self.pca_ = PCA(
             n_components=effective_n_components(self.n_components, fft_features),
             random_state=self.random_state,
@@ -185,7 +192,7 @@ class FFTPCAFeatureExtractor(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        fft_features = fft_magnitude(X, idx_frequence_max=self.idx_frequence_max)
+        fft_features = preprocess_fft(X, idx_frequence_max=self.idx_frequence_max)
         pca_features = self.pca_.transform(fft_features)
         if self.scaler_ is not None:
             return self.scaler_.transform(pca_features)
@@ -211,7 +218,7 @@ class STFTTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        return stft_features(
+        return preprocess_stft(
             X,
             stat=self.stat,
             idx_frequence_max=self.idx_frequence_max,
@@ -232,46 +239,39 @@ class MFCCTransformer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        return mfcc_features(X, stat=self.stat, sr=self.sr, n_mfcc=self.n_mfcc)
+        return preprocess_mfcc(X, stat=self.stat, sr=self.sr, n_mfcc=self.n_mfcc)
 
 
-def make_fft_pca_preprocessor(
-    idx_frequence_max=None,
-    n_components=DEFAULT_N_COMPONENTS,
-    scale=False,
-    random_state=RANDOM_SEED,
-):
-    """Factory used by benchmark/manual CV code."""
-
-    return FFTPCAFeatureExtractor(
-        idx_frequence_max=idx_frequence_max,
-        n_components=n_components,
-        scale=scale,
-        random_state=random_state,
-    )
+PREPROCESSORS = {
+    "fft": FFTTransformer,
+    "fft_pca": FFTPCAFeatureExtractor,
+    "stft": STFTTransformer,
+    "mfcc": MFCCTransformer,
+}
 
 
-def make_fft_pca_pipeline(
-    idx_frequence_max=None,
-    n_components=DEFAULT_N_COMPONENTS,
-    scale=False,
-    random_state=RANDOM_SEED,
-):
-    """Optional sklearn Pipeline equivalent for notebook-style experiments."""
+def make_preprocessor(preprocessor=None, **params):
+    """Create a fresh preprocessor from a registry name, class, factory, or estimator."""
 
-    steps = [
-        ("fft", FFTTransformer(idx_frequence_max=idx_frequence_max)),
-        (
-            "pca",
-            PCA(
-                n_components=n_components,
-                random_state=random_state,
-            ),
-        ),
-    ]
-    if scale:
-        steps.append(("scaler", StandardScaler()))
-    return Pipeline(steps)
+    if preprocessor is None:
+        return None
+
+    if isinstance(preprocessor, str):
+        if preprocessor not in PREPROCESSORS:
+            valid_names = ", ".join(sorted(PREPROCESSORS))
+            raise ValueError(f"Unknown preprocessor '{preprocessor}'. Expected one of: {valid_names}")
+        return PREPROCESSORS[preprocessor](**params)
+
+    if isinstance(preprocessor, type):
+        return preprocessor(**params)
+
+    if callable(preprocessor) and not hasattr(preprocessor, "fit"):
+        return preprocessor(**params)
+
+    estimator = clone(preprocessor)
+    if params:
+        estimator.set_params(**params)
+    return estimator
 
 
 def default_fft_pca_param_grid():

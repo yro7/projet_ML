@@ -13,6 +13,11 @@ except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_
     from evaluation.metrics import classification_summary
 
 try:
+    from ..utils.preprocessings import make_preprocessor
+except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_rouge/
+    from utils.preprocessings import make_preprocessor
+
+try:
     from ..config import RANDOM_SEED
 except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_rouge/
     from config import RANDOM_SEED
@@ -32,12 +37,13 @@ def _split_best_params(best_params):
     return grouped
 
 
-def build_estimator_pipeline(classifier_factory, preprocessor_factory=None):
+def build_estimator_pipeline(classifier_factory, preprocessor=None):
     """Build a sklearn Pipeline from optional preprocessor and classifier."""
 
     steps = []
-    if preprocessor_factory is not None:
-        steps.append(("preprocessor", preprocessor_factory()))
+    preprocessor_estimator = make_preprocessor(preprocessor)
+    if preprocessor_estimator is not None:
+        steps.append(("preprocessor", preprocessor_estimator))
     steps.append(("classifier", classifier_factory()))
     return Pipeline(steps)
 
@@ -49,7 +55,7 @@ def run_grid_search(
     y_train,
     X_test=None,
     y_test=None,
-    preprocessor_factory=None,
+    preprocessor=None,
     preprocessor_param_grid=None,
     cv=None,
     scoring="accuracy",
@@ -58,9 +64,12 @@ def run_grid_search(
 ):
     """Run GridSearchCV over preprocessing and classifier parameters."""
 
+    if preprocessor is None and preprocessor_param_grid:
+        raise ValueError("preprocessor_param_grid requires a preprocessor")
+
     estimator = build_estimator_pipeline(
         classifier_factory=classifier_factory,
-        preprocessor_factory=preprocessor_factory,
+        preprocessor=preprocessor,
     )
     param_grid = {}
     param_grid.update(_prefixed_grid(preprocessor_param_grid, "preprocessor"))
@@ -101,7 +110,7 @@ def train_test_benchmark(
     y,
     classifier_factory,
     classifier_params=None,
-    preprocessor_factory=None,
+    preprocessor=None,
     preprocessor_params=None,
     test_size=0.2,
     random_state=RANDOM_SEED,
@@ -119,13 +128,13 @@ def train_test_benchmark(
         stratify=stratify_values,
     )
 
-    preprocessor = preprocessor_factory(**(preprocessor_params or {})) if preprocessor_factory else None
-    if preprocessor is None:
+    preprocessor_estimator = make_preprocessor(preprocessor, **(preprocessor_params or {}))
+    if preprocessor_estimator is None:
         X_train = X_train_raw
         X_test = X_test_raw
     else:
-        X_train = preprocessor.fit_transform(X_train_raw)
-        X_test = preprocessor.transform(X_test_raw)
+        X_train = preprocessor_estimator.fit_transform(X_train_raw)
+        X_test = preprocessor_estimator.transform(X_test_raw)
 
     classifier = classifier_factory(**(classifier_params or {}))
     classifier.fit(X_train, y_train)
@@ -134,6 +143,7 @@ def train_test_benchmark(
 
     return {
         "preprocessor": preprocessor,
+        "preprocessor_estimator": preprocessor_estimator,
         "classifier": classifier,
         "X_train": X_train,
         "X_test": X_test,

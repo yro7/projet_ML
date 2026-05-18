@@ -1,8 +1,4 @@
-"""Project-wide constants.
-
-Keep this module small: it is shared by data loading, preprocessing, models,
-and evaluation without owning any business logic.
-"""
+"""Config générale du projet"""
 
 from pathlib import Path
 
