@@ -1,4 +1,4 @@
-"""Plotting helpers only; no model training or benchmarking here."""
+"""Plotting helpers only"""
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +17,7 @@ def plot_pca_explained_variance(pca, ax=None):
         _, ax = plt.subplots()
     ax.plot(np.cumsum(pca.explained_variance_ratio_))
     ax.set_xlabel("Nombre de composantes")
-    ax.set_ylabel("Variance expliquee cumulee")
+    ax.set_ylabel("Variance expliquée cumulée")
     return ax
 
 

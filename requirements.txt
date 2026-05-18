@@ -1,0 +1,16 @@
+# Core scientific stack
+numpy>=2.0
+scipy>=1.14
+scikit-learn>=1.6
+
+# Audio preprocessing
+librosa>=0.10
+
+# Plots and notebook rendering
+matplotlib>=3.8
+seaborn>=0.13
+jupyter>=1.0
+ipykernel>=6.0
+
+# Neural network exercises
+torch>=2.0
