@@ -442,9 +442,9 @@ Perform a grid search by hand on the training set over the prepocessing (idx_fre
 
 ```python
 # Grille des hyperparamètres
-idx_freq_values = [100, 500, 1000, 3000, 9261]
-n_comp_values   = [5, 10, 20, 30]
-C_values        = [0.01, 0.1, 1, 10, 100]
+idx_freq_values = [100] #, 500, 1000, 3000, 9261]
+n_comp_values   = [5] # , 10, 20, 30]
+C_values        = [0.01] #, 0.1, 1, 10, 100]
 
 best_score  = -1
 best_params = {}
@@ -527,6 +527,7 @@ Evaluate the result by confusion matrix and percentage of correct classification
 *Tip:* Remember to put a function to display the confusion matrix
 
 ```python
+from sklearn.metrics import ConfusionMatrixDisplay
 # Helper pour afficher la matrice de confusion
 def plot_confusion_matrix(y_true, y_pred, title, ax=None):
     cm = confusion_matrix(y_true, y_pred)
@@ -619,7 +620,6 @@ As before, use **Pipeline** and **GridSearchCV** to perform the SVM classifictio
 ```python
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV, LeaveOneOut, cross_val_predict
-from sklearn.metrics import confusion_matrix, accuracy_score, ConfusionMatrixDisplay
 
 #  Pipeline : FFT > PCA > Normalisation > SVM
 pipeline_svm = Pipeline([
@@ -630,10 +630,10 @@ pipeline_svm = Pipeline([
 ])
 
 param_grid_svm = {
-    'fft__idx_frequence_max': [1000, 3000, 9261],
-    'pca__n_components': [10, 20, 30],
-    'clf__C': [0.1, 1, 10, 100],
-    'clf__gamma': [0.001, 0.01, 0.1, 'scale']
+    'fft__idx_frequence_max': [1000 ], # , 3000, 9261],
+    'pca__n_components': [10 ], # , 20, 30],
+    'clf__C': [0.1], #, 1, 10, 100],
+    'clf__gamma': [0.001 ], #, 0.01, 0.1, 'scale']
 }
 
 grid_search_svm = GridSearchCV(
@@ -791,21 +791,21 @@ Here is the algorithm Adaboost
     **(a)** Fit a classifier $y_m(x)$ to the training data by minimizing the weighted
 error function
     
-    $J_m = \sum_{n=1}^N{w_n^{(m)}I(y_m(x)\neq t_n)}$
+$J_m = \sum_{n=1}^N{w_n^{(m)}I(y_m(x)\neq t_n)}$
 
-    where $I(y_m(x)\neq t_n)$ is the indicator function and equals $1$ when $y_m(x_n) 	= t_n$ and $0$ otherwise
+where $I(y_m(x)\neq t_n)$ is the indicator function and equals $1$ when $y_m(x_n) 	= t_n$ and $0$ otherwise
 
-    **(b)** Evaluate the quantities
+**(b)** Evaluate the quantities
 
-    $\epsilon_m = \frac{\sum_{n=1}^N{w_n^{(m)}I(y_m(x)\neq t_n)}}{\sum_{n=1}^N{w_n^{(m)}}}$
+$\epsilon_m = \frac{\sum_{n=1}^N{w_n^{(m)}I(y_m(x)\neq t_n)}}{\sum_{n=1}^N{w_n^{(m)}}}$
 
-    and then use these to evaluate
+and then use these to evaluate
 
-    $\alpha_m = \textit{ln}\left({\frac{1-\epsilon_m}{\epsilon_m}}\right)$
+$\alpha_m = \textit{ln}\left({\frac{1-\epsilon_m}{\epsilon_m}}\right)$
 
-    **(c)** Update the data weighting coefficients
-    
-    $w_n^{(m+1)} = w_n^{(m)} \textit{exp}\left({\alpha_m I(y_m(x_n) \neq t_n)}\right)$
+**(c)** Update the data weighting coefficients
+
+$w_n^{(m+1)} = w_n^{(m)} \textit{exp}\left({\alpha_m I(y_m(x_n) \neq t_n)}\right)$
 
 3. Make predictions using the final model, which is given by
 
@@ -816,15 +816,96 @@ error function
 
 
 ```python
+y_train_ada = np.where(y_train_bag == 0, -1, 1)
+y_test_ada = np.where(y_test_bag == 0, -1, 1)
 
+N = X_train_bag.shape[0]
+M = 100
+
+# 1. Initialisation des poids
+w = np.ones(N) / N
+
+models_ada = []
+alphas = []
+
+for m in range(M):
+    tree = DecisionTreeClassifier(max_depth=2, random_state=RANDOM_SEED + m)
+    tree.fit(X_train_bag, y_train_ada, sample_weight=w)
+    y_pred_train = tree.predict(X_train_bag)
+    I = (y_pred_train != y_train_ada).astype(int)
+    epsilon_m = np.sum(w * I) / np.sum(w)
+    
+    # Sécurités numériques (pour éviter log(0) ou des poids négatifs)
+    if epsilon_m == 0:
+        alpha_m = 9.0 # Si l'arbre est bon, on lui donne un énorme poids
+    elif epsilon_m >= 0.5:
+        alpha_m = 0.0  # S'il est mauvais, on ignore
+    else:
+        alpha_m = np.log((1 - epsilon_m) / epsilon_m)
+        
+    # Etape C: maj poids
+    w = w * np.exp(alpha_m * I)
+    
+    # On sauvegarde l'arbre et son poids
+    models_ada.append(tree)
+    alphas.append(alpha_m)
+
+test_preds_accumulated = np.zeros(X_test_bag.shape[0])
+for alpha_m, model in zip(alphas, models_ada):
+    test_preds_accumulated += alpha_m * model.predict(X_test_bag)
+
+y_pred_ada = np.sign(test_preds_accumulated)
+
+adaboost_acc = accuracy_score(y_test_ada, y_pred_ada)
+
+print(f"Précision du modèle Bagging (rappel)       : {bagging_acc:.4f}")
+print(f"Précision du modèle AdaBoost 'from scratch': {adaboost_acc:.4f}")
 ```
+
+Analyse des résultats: TODO
 
 **Question 2 :** 
 With sklearn library, apply adaboost with decision tree (*max_depth=2*) on the same problem. Find good parameters with the leave one out cross validation. Do the same thing with Gradient bossting.
 
 
 ```python
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import AdaBoostClassifier, GradientBoostingClassifier
+
+cv = LeaveOneOut()
+
+# 1. AdaBoost avec DecisionTree (max_depth=2)
+ada_clf = AdaBoostClassifier(
+    estimator=DecisionTreeClassifier(max_depth=2, random_state=RANDOM_SEED),
+    random_state=RANDOM_SEED
+)
+
+param_grid_ada = {
+    'n_estimators': [50, 100, 200],
+    'learning_rate': [0.1, 0.5, 1.0]
+}
+
+grid_ada = GridSearchCV(ada_clf, param_grid_ada, cv=cv, scoring='accuracy', n_jobs=-1)
+grid_ada.fit(X_train_bag, y_train_bag)
+
+print(f"Meilleurs paramètres AdaBoost : {grid_ada.best_params_}")
+print(f"Précision Test AdaBoost       : {grid_ada.score(X_test_bag, y_test_bag):.4f}")
+
+# 2. Gradient Boosting
+gb_clf = GradientBoostingClassifier(
+    max_depth=2, 
+    random_state=RANDOM_SEED
+)
+
+param_grid_gb = {
+    'n_estimators': [50, 100, 200],
+    'learning_rate': [0.01, 0.1, 0.5]
+}
+
+grid_gb = GridSearchCV(gb_clf, param_grid_gb, cv=cv, scoring='accuracy', n_jobs=-1)
+grid_gb.fit(X_train_bag, y_train_bag)
+
+print(f"\nMeilleurs paramètres Gradient Boosting : {grid_gb.best_params_}")
+print(f"Précision Test Gradient Boosting       : {grid_gb.score(X_test_bag, y_test_bag):.4f}")
 ```
 
 # Partie IV : Neural Network with pytorch
@@ -861,14 +942,18 @@ Usually a FNN is a succession of blocks (linear -> ReLU). Finally the networks t
     
 
 ```python
+from torch import nn
 class NNClassification(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.network = torch.nn.Sequential(
-            
             ### Define here the succession of torch.nn modules that will constitutes your network
             ### building blocks are torch.nn.ReLU, torch.nn.Linear
-
+            nn.Linear(28*28, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
+            nn.Linear(512, 10),
         )
     
     def forward(self, xb):
