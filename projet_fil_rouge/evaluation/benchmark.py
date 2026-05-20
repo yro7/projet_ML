@@ -138,7 +138,7 @@ def train_test_benchmark(
         X_train = X_train_raw
         X_test = X_test_raw
     else:
-        X_train = preprocessor_estimator.fit_transform(X_train_raw)
+        X_train = preprocessor_estimator.fit_transform(X_train_raw, y_train)
         X_test = preprocessor_estimator.transform(X_test_raw)
 
     classifier_estimator = make_classifier(classifier, **(classifier_params or {}))

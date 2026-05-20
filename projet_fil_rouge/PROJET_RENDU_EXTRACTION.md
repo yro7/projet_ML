@@ -34,28 +34,39 @@ Ces séances se décomposent en ces parties :
 
 
 ```python
-!pip3.12 install librosa
-```
+# Setup le projet et ses imports
+%matplotlib inline
 
-```python
+from pathlib import Path
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy
-import sklearn
-import math
-import numpy.random as rnd
-import seaborn as sns
-import librosa
-from os import listdir
-from os.path import isfile, join
-import glob
-import re
-import torch
+from sklearn.decomposition import PCA
+from sklearn.model_selection import LeaveOneOut, train_test_split, cross_val_predict
 
-# On fixe la seed pour tout le projet pour la reproductibilité des résultats
-RANDOM_SEED = 51
-np.random.seed(RANDOM_SEED)
-torch.manual_seed(RANDOM_SEED)
+ROOT = Path.cwd()
+if not (ROOT / "projet_fil_rouge").exists():
+    ROOT = ROOT.parent
+sys.path.insert(0, str(ROOT))
+
+from projet_fil_rouge.config import RANDOM_SEED, WORDS, seed_everything
+from projet_fil_rouge.data import load_dataset
+from projet_fil_rouge.utils.preprocessings import (
+    preprocess_fft,
+    stft_magnitude,
+    mfcc_coefficients,
+    get_preprocessor_param_grid,
+)
+from projet_fil_rouge.utils.plots import (
+    plot_pca_explained_variance,
+    plot_confusion_matrix,
+    show_subplots_for_transformed_data,
+)
+from projet_fil_rouge.evaluation.manual_cv import manual_loo_score, manual_grid_search
+from projet_fil_rouge.evaluation.benchmark import run_grid_search
+from projet_fil_rouge.classifiers import get_classifier_param_grid
+
+seed_everything(RANDOM_SEED)
 ```
 
 # Preprocessing
@@ -64,63 +75,26 @@ Sur l'espace moodle, vous trouverez un dossier d'enregistrements audio de mots d
 
 
 ```python
-data = [] 
-label = [] 
-genres = []
-min_duration = None
-words = ['avance','recule','tournegauche']
-list_genres = ['M', 'F']
+X, y, genres, fs = load_dataset()
 
-for file_name in glob.glob('FichierTest/*.wav'):
-    record = librosa.load(file_name)[0]
-    data.append(record)
-    # Computation of the minimal size of recordings
-    if min_duration is None or record.shape[0] < min_duration:
-        min_duration = record.shape[0] 
-    
-    # Creation of the vector of label
-    for i, word in enumerate(words):
-        if re.search(word, file_name):
-            label.append(i)
-
-    # Creation of the vector of label
-    for i, genre in enumerate(list_genres):
-        if re.search(genre, file_name[12:]):# 12 is for ignoring "FichierTest/"
-            genres.append(genre)
-
-fs = librosa.load(file_name)[1] # Sampling frequency
-genres = np.array(genres)
-print(f'The smallest record contains {min_duration} samples, and the sample frequency is {fs} Hz')
+print(f"X shape (number of audios x smallest number of sample): {X.shape}")
+print(f"y shape: {y.shape}")
+print(f"genres shape: {genres.shape}")
+print(f"Sampling frequency: {fs} Hz")
 ```
 
 ### We trim the recordings to isolate the word and have identical durations
 The smallest record contains 18 522 samples. We are going to cut all recordings to be of this size.
 
+Dans [data.py](data.py), c'est
 ```python
-def trim(record):
-    half_duration = 18522//2
-
-    # First, we compute the barycenter of energy along time. We interpret it as the moment when the word appears
-    barycenter = int(np.floor(np.multiply(np.power(record,2),np.arange(0,record.shape[0],1)).sum()/np.power(record,2).sum()))
-
-    # Second, we adjust the barycenter to be in the index range
-    if barycenter-half_duration < 0:
-        barycenter += half_duration-barycenter
-    if barycenter+half_duration >= record.shape[0]:
-        barycenter -= barycenter+half_duration - record.shape[0]
-    
-    # Finally, we trim the recording around the barycenter 
-    return record[barycenter-half_duration:barycenter+half_duration]
+trim_length = min(len(record) for record in records) if target_length is None else target_length
+print(f"The smallest record contains {trim_length} samples")
+X = np.vstack([energy_trim(record, trim_length) for record in records])
 ```
+qui fait cette opération.
 
-```python
-X = np.empty((len(data),min_duration))
-for i in range(len(data)):
-    X[i,:] = trim(data[i])
 
-y = np.array(label)
-print(f'Shape of inputs X is {X.shape} and size of targets class is {y.shape}')
-```
 
 ### Spectral representation
 
@@ -132,10 +106,6 @@ print(f'Shape of inputs X is {X.shape} and size of targets class is {y.shape}')
 from scipy import signal
 from scipy.fft import fft
 from sklearn.decomposition import PCA
-
-```
-
-```python
 x_hat = fft(X)
 ```
 
@@ -144,89 +114,28 @@ x_hat = fft(X)
 2. PCA on $|\hat{X}|$ :
 
 ```python
-pca = PCA(n_components=20).fit(np.abs(x_hat)) # On fit sur les 20 premières components, pour la suite.
-plt.plot(np.cumsum(pca.explained_variance_ratio_))
-plt.xlabel('Nombre de composantes')
-plt.ylabel('Variance expliquée cumulée')
+X_fft = preprocess_fft(X)
+pca = PCA(n_components=20, random_state=RANDOM_SEED).fit(X_fft)
+plot_pca_explained_variance(pca)
+plt.show()
 ```
 
 3. Apply a Short Term Fourier Transform on $X$. What are the dimension of stft $\hat{X}[t,f]$?
 
 4. Make 2 subplots (3x3) of the stft (as images with function .imshow()) with three instances of each words, one for male and one for female 
 
-3.  SFTT on $|{X}|$:
+'stft_magnitude' calcule STFT[X]. Puis show_subplots_for_transformed_data se charge d'afficher les 2 subplots.
 
 ```python
-from scipy.signal import stft
-
-# On choisit des paramètres standard (fenêtre de 256 ou 512 points)
-nperseg = 400  # Environ 18ms à 22kHz, typique pour la parole
-f, t, Zxx = stft(X, fs=fs, nperseg=nperseg)
-
-print(f"Dimensions de la STFT (Zxx) : {Zxx.shape}")
-# Zxx.shape[0] = nombre d'échantillons (54)
-# Zxx.shape[1] = nombre de fréquences (f)
-# Zxx.shape[2] = nombre de segments temporels (t)
+X_stft = stft_magnitude(X, fs=fs, nperseg=400)
+print(f"STFT shape: {X_stft.shape}")
 ```
 
-```python
-img = plt.imshow(abs(Zxx[0,:,:]), origin='lower', cmap='jet', interpolation='nearest', aspect='auto')
-plt.show() # TODO utile ou pas ? 
-```
-
-4. On définit une fonction générique qui pour 3 instances de chaque mot, pour chaque sexe, affiche ces subplots en fonction d'une méthode pour : d'abord STFT, puis on l'utilisera aussi pour la MFCC.
+4. On définit une fonction générique qui pour 3 instances de chaque mot, pour chaque sexe, affiche ces subplots en fonction d'une méthode pour : d'abord STFT, puis on l'utilisera aussi pour les autres méthodes de preproces.
 
 ```python
-words = ['avance', 'recule', 'tournegauche']
-list_genres = ['M', 'F']
-
-def show_subplots_for_transformed_data(transformed_data, method="stft"):
-    for genre in list_genres:
-        # On crée une nouvelle figure 3x3 pour chaque genre
-        fig, axs = plt.subplots(3, 3, figsize=(15, 10))
-        fig.suptitle(f'Spectrogrammes pour le genre : {genre}')
-        
-        for i, word_label in enumerate(range(3)): # Lignes (les 3 mots)
-            # On trouve tous les indices correspondants (ex: tous les 'M' qui disent 'avance')
-            indices = np.where((y == word_label) & (genres == genre))[0]
-            
-            # On prend les 3 premières instances trouvées pour remplir les 3 colonnes
-            for j in range(3): 
-                idx_to_plot = indices[j]
-                ax = axs[i, j] # On cible la case (ligne i, colonne j)
-                
-                # En fonction de la méthode, on applique un post process différent:
-
-                if method=="stft":
-                    # Calcul de la magnitude en log pour voir les détails
-                    spec_data = np.abs(transformed_data[idx_to_plot])
-                    # On utilise ax.imshow pour dessiner DANS la case précise
-                    im = ax.imshow(20 * np.log10(spec_data + 1e-10), 
-                                origin='lower', aspect='auto', cmap='jet')
-                
-                if method=="mfcc":
-                    ax = axs[i, j]
-            
-                    # Utilisation de la fonction spécialisée de librosa pour l'affichage
-                    img = librosa.display.specshow(X_mfcc[idx_to_plot], 
-                                                sr=fs, 
-                                                ax=ax, 
-                                                x_axis='time')
-                    
-                    # On ajoute des labels pour la clarté
-                    if j == 0: ax.set_ylabel(f"{words[word_label]}\nCoefficients")
-                    if i == 0: ax.set_title(f"Instance {j+1}")
-                    
-                # Habillage (optionnel mais recommandé)
-                if j == 0: ax.set_ylabel(words[word_label])
-                if i == 0: ax.set_title(f"Instance {j+1}")
-
-    plt.tight_layout()
-    plt.show()
-```
-
-```python
-show_subplots_for_transformed_data(Zxx, method="stft")
+show_subplots_for_transformed_data(X_stft, y=y, genres=genres, method="stft", fs=fs)
+plt.show()
 ```
 
 ### MFCC (Mel-Frequency Cepstral Coefficients)
@@ -238,34 +147,11 @@ show_subplots_for_transformed_data(Zxx, method="stft")
 1. MFCC sur $X$ :
 
 ```python
-n_mfcc = 13  # Valeur standard en reconnaissance vocale
-mfccs = []
+X_mfcc = mfcc_coefficients(X, sr=fs, n_mfcc=13)
 
-for i in range(X.shape[0]):
-    # Calcul des MFCC pour chaque ligne de X
-    # On précise la fréquence d'échantillonnage fs calculée précédemment
-    mfcc = librosa.feature.mfcc(y=X[i, :], sr=fs, n_mfcc=n_mfcc)
-    mfccs.append(mfcc)
-
-# Conversion en tableau numpy
-# La forme sera (nb_echantillons, n_mfcc, nb_frames_temporelles)
-X_mfcc = np.array(mfccs)
-
-print(f"Forme des MFCC : {X_mfcc.shape}")
-```
-
-```python
-import librosa.display
-
-# 1. MFCC sur X
-plt.figure(figsize=(10, 4))
-librosa.display.specshow(X_mfcc[0], x_axis='time', sr=fs)
-plt.colorbar()
-plt.title('MFCC de l\'enregistrement 0')
-plt.show() # TODO: eske afficher image utile ?
-
-# 2. Affichage des subplots
-show_subplots_for_transformed_data(X_mfcc, method="mfcc")
+print(f"MFCC shape: {X_mfcc.shape}")
+show_subplots_for_transformed_data(X_mfcc, y=y, genres=genres, method="mfcc", fs=fs)
+plt.show()
 ```
 
 #### Now we will build sklearn transformers to extract features

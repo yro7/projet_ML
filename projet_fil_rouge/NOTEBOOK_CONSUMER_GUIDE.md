@@ -45,3 +45,42 @@ from projet_fil_rouge.utils.plots import plot_benchmark_result
 
 plot_benchmark_result(result, labels=WORDS, title_prefix="Bagging tree")
 ```
+
+## Partie V : nouveaux preprocessors
+
+Les nouveaux preprocessors sont disponibles par nom dans le meme registry :
+
+```python
+from projet_fil_rouge.utils.preprocessings import get_preprocessor_param_grid
+
+for name in ["mfcc_summary", "wavelet", "fft_kernel_pca", "fft_lda", "fft_nmf", "fft_svd"]:
+    print(name, get_preprocessor_param_grid(name))
+```
+
+Exemple de benchmark pour une reduction supervisee FFT + LDA :
+
+```python
+result = train_test_benchmark(
+    X_raw=X,
+    y=y,
+    preprocessor="fft_lda",
+    preprocessor_params={"idx_frequence_max": 1_000, "scale": True},
+    classifier="logistic_regression",
+    classifier_params={"C": 1.0},
+)
+```
+
+Exemple de grid search pour les ondelettes :
+
+```python
+result = run_grid_search(
+    X_train=X,
+    y_train=y,
+    preprocessor="wavelet",
+    preprocessor_param_grid=get_preprocessor_param_grid("wavelet"),
+    classifier="svm",
+    classifier_param_grid=get_classifier_param_grid("svm"),
+    cv=3,
+    n_jobs=1,
+)
+```

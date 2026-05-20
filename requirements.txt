@@ -5,6 +5,7 @@ scikit-learn>=1.6
 
 # Audio preprocessing
 librosa>=0.10
+PyWavelets>=1.6
 
 # Plots and notebook rendering
 matplotlib>=3.8

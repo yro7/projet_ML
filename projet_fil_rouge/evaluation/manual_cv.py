@@ -14,14 +14,14 @@ except ImportError:  # Allows importing from a notebook whose cwd is projet_fil_
     from utils.preprocessings import make_preprocessor
 
 
-def _fit_transform_preprocessor(preprocessor, X_train, X_valid):
+def _fit_transform_preprocessor(preprocessor, X_train, X_valid, y_train=None):
     if preprocessor is None:
         return X_train, X_valid
 
     if hasattr(preprocessor, "fit_transform"):
-        X_train_features = preprocessor.fit_transform(X_train)
+        X_train_features = preprocessor.fit_transform(X_train, y_train)
     else:
-        preprocessor.fit(X_train)
+        preprocessor.fit(X_train, y_train)
         X_train_features = preprocessor.transform(X_train)
     X_valid_features = preprocessor.transform(X_valid)
     return X_train_features, X_valid_features
@@ -58,7 +58,12 @@ def manual_loo_score(
         y_valid = y[~train_mask]
 
         preprocessor_estimator = make_preprocessor(preprocessor, **preprocessor_params)
-        X_train, X_valid = _fit_transform_preprocessor(preprocessor_estimator, X_train_raw, X_valid_raw)
+        X_train, X_valid = _fit_transform_preprocessor(
+            preprocessor_estimator,
+            X_train_raw,
+            X_valid_raw,
+            y_train=y_train,
+        )
 
         classifier_estimator = make_classifier(classifier, **classifier_params)
         classifier_estimator.fit(X_train, y_train)
