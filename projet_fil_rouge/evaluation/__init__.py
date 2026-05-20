@@ -1,5 +1,10 @@
 """Evaluation, benchmark, and manual CV orchestration."""
 
+from .benchmark_analysis import (
+    build_analysis,
+    load_benchmark_rows,
+    write_analysis_outputs,
+)
 from .benchmark_matrix import (
     BENCHMARK_CSV_FIELDNAMES,
     iter_benchmark_jobs,
