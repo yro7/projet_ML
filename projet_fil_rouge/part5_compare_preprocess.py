@@ -16,13 +16,13 @@ from sklearn.model_selection import StratifiedKFold
 
 try:
     from .classifiers import get_classifier_param_grid
-    from .config import RANDOM_SEED, WORDS, seed_everything
-    from .data import load_dataset
+    from .config import DATASET_CURRENT, RANDOM_SEED, seed_everything
+    from .data import list_datasets, load_named_dataset
     from .evaluation.benchmark import run_grid_search
 except ImportError:  # Allows running with: python3 part5_compare_preprocess.py
     from classifiers import get_classifier_param_grid
-    from config import RANDOM_SEED, WORDS, seed_everything
-    from data import load_dataset
+    from config import DATASET_CURRENT, RANDOM_SEED, seed_everything
+    from data import list_datasets, load_named_dataset
     from evaluation.benchmark import run_grid_search
 
 
@@ -257,11 +257,66 @@ def compare_preprocessors(
     )
 
 
+def _with_dataset_name(rows, dataset_name):
+    return [{"dataset": dataset_name, **row} for row in rows]
+
+
+def compare_preprocessors_for_datasets(
+    dataset_names=None,
+    specs=None,
+    classifier="svm",
+    classifier_param_grid=None,
+    cv_splits=6,
+    random_state=RANDOM_SEED,
+    n_jobs=1,
+    fast=False,
+    strict=False,
+):
+    """Compare preprocessors for each requested dataset name."""
+
+    dataset_names = list(dataset_names or list_datasets(include_missing=False))
+    rows = []
+    for dataset_name in dataset_names:
+        try:
+            dataset = load_named_dataset(name=dataset_name, strict=strict)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"Warning: skipping dataset '{dataset_name}': {exc}")
+            continue
+
+        print(
+            "Dataset: "
+            f"{dataset.name}, X={dataset.X.shape}, "
+            f"classes={dict(enumerate(dataset.target_names))}, fs={dataset.fs} Hz"
+        )
+        dataset_rows = compare_preprocessors(
+            X=dataset.X,
+            y=dataset.y,
+            specs=specs,
+            classifier=classifier,
+            classifier_param_grid=classifier_param_grid,
+            cv_splits=cv_splits,
+            random_state=random_state,
+            n_jobs=n_jobs,
+            fast=fast,
+        )
+        rows.extend(_with_dataset_name(dataset_rows, dataset.name))
+
+    return sorted(
+        rows,
+        key=lambda row: (
+            row["dataset"],
+            1 if np.isnan(row["cv_mean_accuracy"]) else 0,
+            0 if np.isnan(row["cv_mean_accuracy"]) else -row["cv_mean_accuracy"],
+        ),
+    )
+
+
 def print_comparison_table(rows):
     """Print a compact markdown table."""
 
     headers = [
         "rank",
+        "dataset",
         "method",
         "score",
         "std",
@@ -280,6 +335,7 @@ def print_comparison_table(rows):
         table_rows.append(
             [
                 str(rank),
+                row.get("dataset", ""),
                 row["label"],
                 score,
                 std,
@@ -308,6 +364,8 @@ def print_comparison_table(rows):
 def write_csv(rows, output_path):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    if not rows:
+        raise ValueError("Cannot write an empty comparison CSV")
     with output_path.open("w", newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=list(rows[0].keys()))
         writer.writeheader()
@@ -323,6 +381,20 @@ def parse_args():
     parser.add_argument("--cv", type=int, default=6)
     parser.add_argument("--n-jobs", type=int, default=1)
     parser.add_argument("--fast", action="store_true")
+    parser.add_argument(
+        "--datasets",
+        nargs="+",
+        default=None,
+        help=(
+            "Dataset names to compare. Defaults to available datasets. "
+            f"Known names include: {', '.join(list_datasets(include_missing=True))}"
+        ),
+    )
+    parser.add_argument(
+        "--strict-datasets",
+        action="store_true",
+        help="Require every requested dataset and requested word to be present.",
+    )
     parser.add_argument("--output-csv", default="")
     return parser.parse_args()
 
@@ -330,19 +402,25 @@ def parse_args():
 def main():
     args = parse_args()
     seed_everything(RANDOM_SEED)
-    X, y, genres, fs = load_dataset()
 
-    print(f"Dataset: X={X.shape}, classes={dict(enumerate(WORDS))}, fs={fs} Hz")
+    dataset_names = args.datasets or list_datasets(include_missing=False)
+    if not dataset_names:
+        dataset_names = [DATASET_CURRENT]
+
     print(f"Classifier: {args.classifier}, CV={args.cv} folds")
+    print(f"Datasets: {', '.join(dataset_names)}")
 
-    rows = compare_preprocessors(
-        X=X,
-        y=y,
+    rows = compare_preprocessors_for_datasets(
+        dataset_names=dataset_names,
         classifier=args.classifier,
         cv_splits=args.cv,
         n_jobs=args.n_jobs,
         fast=args.fast,
+        strict=args.strict_datasets,
     )
+    if not rows:
+        raise RuntimeError("No dataset could be loaded for comparison")
+
     print_comparison_table(rows)
 
     if args.output_csv:

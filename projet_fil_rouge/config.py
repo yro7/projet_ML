@@ -6,8 +6,15 @@ RANDOM_SEED = 51
 
 PROJECT_DIR = Path(__file__).resolve().parent
 DATA_DIR = PROJECT_DIR / "FichierTest"
+PERSONAL_DATA_DIR = PROJECT_DIR / "FichierPerso"
+GOOGLE_SPEECH_COMMANDS_DIR = PROJECT_DIR / "SpeechCommands"
+
+DATASET_CURRENT = "current"
+DATASET_PERSONAL_AUGMENTED = "personal_augmented"
+DATASET_GOOGLE_SPEECH_COMMANDS = "google_speech_commands"
 
 WORDS = ("avance", "recule", "tournegauche")
+GOOGLE_DEFAULT_WORDS = ("forward", "backward", "left")
 GENRES = ("M", "F")
 
 DEFAULT_SAMPLE_RATE = 22_050
