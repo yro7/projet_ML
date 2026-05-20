@@ -36,6 +36,14 @@ from .neural_network import (
 )
 from .svm import default_param_grid as default_svm_param_grid
 from .svm import make_classifier as make_svm_classifier
+from .specs import (
+    ClassifierSpec,
+    classifier_specs_by_key,
+    create_all_classifier_specs,
+    create_bagging_classifier_specs,
+    create_base_classifier_specs,
+    create_preset_classifier_specs,
+)
 
 
 CLASSIFIERS = {
