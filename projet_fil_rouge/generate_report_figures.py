@@ -697,8 +697,127 @@ ax.grid(axis="y", alpha=0.3)
 savefig(fig, "benchmark_by_fit_method.pdf")
 
 # ============================================================
+# Fig 17: Noise robustness benchmark (with 10 realizations)
+# ============================================================
+print("\n[Fig 17] Noise robustness benchmark...")
+from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import cross_val_score
+
+def add_noise_to_dataset(X, snr_db, random_state=RANDOM_SEED):
+    if snr_db is None or np.isinf(snr_db):
+        return X.copy()
+    np.random.seed(random_state)
+    X_noisy = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        x = X[i, :]
+        power = np.mean(x ** 2)
+        if power <= 0:
+            X_noisy[i, :] = x
+            continue
+        noise_power = power / (10 ** (snr_db / 10.0))
+        noise = np.random.normal(0, np.sqrt(noise_power), size=x.shape)
+        X_noisy[i, :] = x + noise
+    return X_noisy
+
+from projet_fil_rouge.utils.preprocessings import preprocess_mfcc_summary
+
+snr_levels_dict = {
+    "Clean": None,
+    "25dB": 25.0,
+    "20dB": 20.0,
+    "15dB": 15.0,
+    "10dB": 10.0,
+    "5dB": 5.0,
+    "0dB": 0.0
+}
+
+noise_classifiers = {
+    "Logistic Regression": LogisticRegression(C=1.0, max_iter=1000, random_state=RANDOM_SEED),
+    "SVM (RBF)": SVC(C=10.0, kernel="rbf", gamma="scale", random_state=RANDOM_SEED),
+    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=RANDOM_SEED),
+    "Bagging Tree": BaggingClassifier(
+        estimator=DecisionTreeClassifier(max_depth=5, random_state=RANDOM_SEED),
+        n_estimators=50,
+        random_state=RANDOM_SEED
+    ),
+    "AdaBoost": AdaBoostClassifier(
+        estimator=DecisionTreeClassifier(max_depth=2, random_state=RANDOM_SEED),
+        n_estimators=100,
+        learning_rate=0.1,
+        random_state=RANDOM_SEED
+    ),
+    "Neural Network": MLPClassifier(
+        hidden_layer_sizes=(32,),
+        alpha=0.001,
+        max_iter=1000,
+        random_state=RANDOM_SEED
+    )
+}
+
+n_reals = 10
+mean_results = {clf_name: [] for clf_name in noise_classifiers}
+std_results = {clf_name: [] for clf_name in noise_classifiers}
+
+for lvl_name, snr_v in snr_levels_dict.items():
+    print(f"  Evaluating SNR: {lvl_name}...")
+    if snr_v is None:
+        X_feats = preprocess_mfcc_summary(X, sr=fs, n_mfcc=13)
+        for clf_name, clf in noise_classifiers.items():
+            pipe = Pipeline([("scaler", StandardScaler()), ("clf", clf)])
+            scs = cross_val_score(pipe, X_feats, y, cv=LeaveOneOut(), n_jobs=-1)
+            mean_results[clf_name].append(np.mean(scs))
+            std_results[clf_name].append(0.0)
+    else:
+        all_scs = {clf_name: [] for clf_name in noise_classifiers}
+        for r in range(n_reals):
+            X_n = add_noise_to_dataset(X, snr_v, random_state=RANDOM_SEED + r)
+            X_feats = preprocess_mfcc_summary(X_n, sr=fs, n_mfcc=13)
+            for clf_name, clf in noise_classifiers.items():
+                pipe = Pipeline([("scaler", StandardScaler()), ("clf", clf)])
+                scs = cross_val_score(pipe, X_feats, y, cv=LeaveOneOut(), n_jobs=-1)
+                all_scs[clf_name].append(np.mean(scs))
+        for clf_name in noise_classifiers:
+            mean_results[clf_name].append(np.mean(all_scs[clf_name]))
+            std_results[clf_name].append(np.std(all_scs[clf_name]))
+
+fig, ax = plt.subplots(figsize=(11, 7))
+colors_map = {
+    "Logistic Regression": "#34495e", "SVM (RBF)": "#e74c3c", "Random Forest": "#2ecc71",
+    "Bagging Tree": "#3498db", "AdaBoost": "#e67e22", "Neural Network": "#9b59b6"
+}
+markers_map = {
+    "Logistic Regression": "o", "SVM (RBF)": "s", "Random Forest": "^",
+    "Bagging Tree": "D", "AdaBoost": "v", "Neural Network": "p"
+}
+x_lbls = list(snr_levels_dict.keys())
+x_idxs = np.arange(len(x_lbls))
+
+for clf_name in noise_classifiers:
+    mns = np.array(mean_results[clf_name])
+    sds = np.array(std_results[clf_name])
+    ax.plot(x_idxs, mns, marker=markers_map[clf_name], color=colors_map[clf_name], label=clf_name, linewidth=2, markersize=7)
+    ax.fill_between(x_idxs, mns - sds, mns + sds, color=colors_map[clf_name], alpha=0.15)
+    ax.text(x_idxs[-1] + 0.08, mns[-1], f"{mns[-1]:.1%} ± {sds[-1]:.1%}" if sds[-1] > 0 else f"{mns[-1]:.1%}", color=colors_map[clf_name], va="center", fontweight="bold", fontsize=8)
+
+ax.set_xticks(x_idxs)
+ax.set_xticklabels(x_lbls, fontsize=11)
+ax.set_xlabel("Niveau de Bruit (SNR)", fontsize=12, fontweight="bold")
+ax.set_ylabel("Accuracy (LOO CV)", fontsize=12, fontweight="bold")
+ax.set_title("Résilience au Bruit des Classifieurs avec Intervalles de Confiance (MFCC Summary)", fontsize=13, fontweight="bold", pad=15)
+ax.set_ylim(0.25, 1.05)
+ax.grid(True, linestyle="--", alpha=0.5)
+ax.legend(loc="lower left", fontsize=10, framealpha=0.9)
+ax.set_xlim(-0.25, len(x_lbls) - 0.5)
+plt.tight_layout()
+savefig(fig, "noise_robustness.pdf")
+fig_png = plt.figure(fig.number)
+fig_png.savefig(FIGURES_DIR / "noise_robustness.png", dpi=150, bbox_inches="tight")
+plt.close(fig_png)
+
+# ============================================================
 # Store all numerical results for LaTeX
 # ============================================================
+
 results = {
     "lr_best_params": str(grid_search.best_params_),
     "lr_loo_score": f"{grid_search.best_score_:.4f}",

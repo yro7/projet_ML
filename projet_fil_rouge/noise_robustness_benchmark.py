@@ -1,8 +1,9 @@
-"""Benchmark the noise robustness of classifiers.
+"""Benchmark the noise robustness of classifiers with multiple realizations.
 
 This script injects white Gaussian noise into the raw audio signals at different
-SNR levels, extracts MFCC Summary features, runs Leave-One-Out cross-validation,
-saves the results, and plots a comparison graph.
+SNR levels over 10 independent realizations, extracts MFCC Summary features,
+runs Leave-One-Out cross-validation, saves the results, and plots a comparison
+graph with standard deviation shaded areas.
 
 Run from project root:
     python3 projet_fil_rouge/noise_robustness_benchmark.py
@@ -64,17 +65,20 @@ def add_noise_to_dataset(X, snr_db, random_state=RANDOM_SEED):
 
 
 def main():
-    print("=== Noise Robustness Benchmark ===")
+    print("=== Robust Noise Robustness Benchmark ===")
     print("Loading raw dataset...")
     X, y, genres, fs = load_dataset()
     print(f"Loaded {X.shape[0]} audio samples (length: {X.shape[1]}, fs: {fs}Hz)")
 
     # Define noise levels (SNR in dB)
-    noise_levels = {
+    snr_levels = {
         "Clean": None,
-        "Low (20dB)": 20.0,
-        "Medium (10dB)": 10.0,
-        "High (0dB)": 0.0
+        "25dB": 25.0,
+        "20dB": 20.0,
+        "15dB": 15.0,
+        "10dB": 10.0,
+        "5dB": 5.0,
+        "0dB": 0.0
     }
 
     # Define classifiers to evaluate
@@ -101,56 +105,90 @@ def main():
         )
     }
 
-    results = {clf_name: [] for clf_name in classifiers}
+    n_realizations = 10
+    results_mean = {clf_name: [] for clf_name in classifiers}
+    results_std = {clf_name: [] for clf_name in classifiers}
     csv_rows = []
 
-    # Iterate over noise levels
-    for level_name, snr_val in noise_levels.items():
-        print(f"\nEvaluating noise level: {level_name}...")
-        # 1. Add noise to raw signal
-        X_noisy = add_noise_to_dataset(X, snr_val)
+    # Iterate over SNR levels
+    for level_name, snr_val in snr_levels.items():
+        print(f"\nEvaluating SNR level: {level_name}...")
         
-        # 2. Extract MFCC Summary features (13 mfcc, mean + std)
-        print("  Extracting MFCC Summary features...")
-        X_features = preprocess_mfcc_summary(X_noisy, sr=fs, n_mfcc=13)
-        
-        # 3. Evaluate each classifier
-        for clf_name, clf in classifiers.items():
+        if snr_val is None:
+            # Clean: no noise realization needed
+            print("  Running clean baseline...")
+            X_features = preprocess_mfcc_summary(X, sr=fs, n_mfcc=13)
+            for clf_name, clf in classifiers.items():
+                t0 = time.perf_counter()
+                pipeline = Pipeline([
+                    ("scaler", StandardScaler()),
+                    ("clf", clf)
+                ])
+                scores = cross_val_score(pipeline, X_features, y, cv=LeaveOneOut(), n_jobs=-1)
+                mean_acc = np.mean(scores)
+                duration = time.perf_counter() - t0
+                
+                results_mean[clf_name].append(mean_acc)
+                results_std[clf_name].append(0.0)
+                print(f"    - {clf_name}: Accuracy = {mean_acc:.2%} (took {duration:.2f}s)")
+                
+                csv_rows.append({
+                    "Noise Level": level_name,
+                    "SNR (dB)": "inf",
+                    "Classifier": clf_name,
+                    "Mean Accuracy": f"{mean_acc:.4f}",
+                    "Std Accuracy": "0.0000",
+                    "Realizations": "1"
+                })
+        else:
+            # Noisy: run multiple realizations
+            all_scores = {clf_name: [] for clf_name in classifiers}
             t0 = time.perf_counter()
             
-            # Setup a standard scaling pipeline
-            pipeline = Pipeline([
-                ("scaler", StandardScaler()),
-                ("clf", clf)
-            ])
+            for r in range(n_realizations):
+                # Generate noise with seed dependent on realization
+                seed = RANDOM_SEED + r
+                X_noisy = add_noise_to_dataset(X, snr_val, random_state=seed)
+                X_features = preprocess_mfcc_summary(X_noisy, sr=fs, n_mfcc=13)
+                
+                for clf_name, clf in classifiers.items():
+                    pipeline = Pipeline([
+                        ("scaler", StandardScaler()),
+                        ("clf", clf)
+                    ])
+                    scores = cross_val_score(pipeline, X_features, y, cv=LeaveOneOut(), n_jobs=-1)
+                    all_scores[clf_name].append(np.mean(scores))
             
-            # Leave-One-Out CV
-            scores = cross_val_score(pipeline, X_features, y, cv=LeaveOneOut(), n_jobs=-1)
-            mean_acc = np.mean(scores)
             duration = time.perf_counter() - t0
+            print(f"  Completed {n_realizations} realizations in {duration:.2f}s")
             
-            results[clf_name].append(mean_acc)
-            print(f"  - {clf_name}: Accuracy = {mean_acc:.2%} (took {duration:.2f}s)")
-            
-            csv_rows.append({
-                "Noise Level": level_name,
-                "SNR (dB)": str(snr_val) if snr_val is not None else "inf",
-                "Classifier": clf_name,
-                "Accuracy": f"{mean_acc:.4f}",
-                "Duration (s)": f"{duration:.3f}"
-            })
+            for clf_name in classifiers:
+                mean_acc = np.mean(all_scores[clf_name])
+                std_acc = np.std(all_scores[clf_name])
+                results_mean[clf_name].append(mean_acc)
+                results_std[clf_name].append(std_acc)
+                print(f"    - {clf_name}: Mean = {mean_acc:.2%} (std = {std_acc:.2%})")
+                
+                csv_rows.append({
+                    "Noise Level": level_name,
+                    "SNR (dB)": str(snr_val),
+                    "Classifier": clf_name,
+                    "Mean Accuracy": f"{mean_acc:.4f}",
+                    "Std Accuracy": f"{std_acc:.4f}",
+                    "Realizations": str(n_realizations)
+                })
 
     # Save results to CSV
     csv_path = RESULTS_DIR / "noise_robustness.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["Noise Level", "SNR (dB)", "Classifier", "Accuracy", "Duration (s)"])
+        writer = csv.DictWriter(f, fieldnames=["Noise Level", "SNR (dB)", "Classifier", "Mean Accuracy", "Std Accuracy", "Realizations"])
         writer.writeheader()
         writer.writerows(csv_rows)
     print(f"\nSaved CSV results to: {csv_path}")
 
     # Plot results
-    print("\nGenerating graph...")
-    fig, ax = plt.subplots(figsize=(10, 6))
+    print("\nGenerating graph with standard deviation bands...")
+    fig, ax = plt.subplots(figsize=(11, 7))
     
     # Modern color palette
     colors = {
@@ -171,42 +209,57 @@ def main():
         "Neural Network": "p"
     }
 
-    x_labels = list(noise_levels.keys())
+    x_labels = list(snr_levels.keys())
     x_indices = np.arange(len(x_labels))
 
-    for clf_name, accs in results.items():
+    for clf_name in classifiers:
+        means = np.array(results_mean[clf_name])
+        stds = np.array(results_std[clf_name])
+        
+        # Plot mean line
         ax.plot(
             x_indices,
-            accs,
+            means,
             marker=markers[clf_name],
             color=colors[clf_name],
             label=clf_name,
             linewidth=2,
-            markersize=8
+            markersize=7
         )
         
-        # Add labels to the endpoints
+        # Add shaded area for standard deviation
+        ax.fill_between(
+            x_indices,
+            means - stds,
+            means + stds,
+            color=colors[clf_name],
+            alpha=0.15
+        )
+        
+        # Add label to the final point
+        final_val = means[-1]
+        final_std = stds[-1]
         ax.text(
-            x_indices[-1] + 0.05,
-            accs[-1],
-            f"{accs[-1]:.1%}",
+            x_indices[-1] + 0.08,
+            final_val,
+            f"{final_val:.1%} ± {final_std:.1%}" if final_std > 0 else f"{final_val:.1%}",
             color=colors[clf_name],
             va="center",
             fontweight="bold",
-            fontsize=9
+            fontsize=8
         )
 
     ax.set_xticks(x_indices)
     ax.set_xticklabels(x_labels, fontsize=11)
     ax.set_xlabel("Niveau de Bruit (SNR)", fontsize=12, fontweight="bold")
     ax.set_ylabel("Accuracy (LOO CV)", fontsize=12, fontweight="bold")
-    ax.set_title("Résilience au Bruit des Classifieurs (MFCC Summary)", fontsize=14, fontweight="bold", pad=15)
-    ax.set_ylim(0.3, 1.05)
+    ax.set_title("Résilience au Bruit des Classifieurs avec Intervalles de Confiance (MFCC Summary)", fontsize=13, fontweight="bold", pad=15)
+    ax.set_ylim(0.25, 1.05)
     ax.grid(True, linestyle="--", alpha=0.5)
     ax.legend(loc="lower left", fontsize=10, framealpha=0.9)
     
-    # Make layout adjustments to fit text on the right
-    ax.set_xlim(-0.2, len(x_labels) - 0.7)
+    # Adjust X limits to make room for labels on the right
+    ax.set_xlim(-0.25, len(x_labels) - 0.5)
     plt.tight_layout()
 
     # Save figures

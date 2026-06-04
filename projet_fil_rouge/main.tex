@@ -894,12 +894,12 @@ Nous comparons 6 classifiers en utilisant une validation croisée Leave-One-Out 
 \toprule
 \textbf{Classifieur} & \textbf{Clean} & \textbf{Low (20\,dB)} & \textbf{Medium (10\,dB)} & \textbf{High (0\,dB)} \\
 \midrule
-Régression Logistique & 96.30\% & \textbf{98.15\%} & 96.30\% & \textbf{90.74\%} \\
-SVM (RBF) & 96.30\% & 96.30\% & 92.59\% & 85.19\% \\
-Random Forest & 94.44\% & 96.30\% & 88.89\% & 83.33\% \\
-Bagging Tree & 87.04\% & 88.89\% & 90.74\% & 83.33\% \\
-AdaBoost & 79.63\% & 83.33\% & 88.89\% & 79.63\% \\
-Réseau de neurones (MLP) & 92.59\% & 96.30\% & 94.44\% & 88.89\% \\
+Régression Logistique & 96.30\% & \textbf{97.59\% $\pm$ 0.85\%} & \textbf{95.00\% $\pm$ 0.85\%} & \textbf{92.04\% $\pm$ 2.35\%} \\
+SVM (RBF) & 96.30\% & 97.04\% $\pm$ 0.91\% & 93.70\% $\pm$ 1.23\% & 89.81\% $\pm$ 2.90\% \\
+Random Forest & 94.44\% & 93.33\% $\pm$ 2.22\% & 91.67\% $\pm$ 1.71\% & 89.81\% $\pm$ 3.01\% \\
+Bagging Tree & 87.04\% & 90.37\% $\pm$ 1.11\% & 91.85\% $\pm$ 2.77\% & 88.33\% $\pm$ 2.75\% \\
+AdaBoost & 79.63\% & 90.93\% $\pm$ 2.80\% & 91.11\% $\pm$ 2.16\% & 87.22\% $\pm$ 4.72\% \\
+Réseau de neurones (MLP) & 92.59\% & 96.67\% $\pm$ 0.74\% & 94.81\% $\pm$ 1.39\% & 91.30\% $\pm$ 2.63\% \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -907,17 +907,17 @@ Réseau de neurones (MLP) & 92.59\% & 96.30\% & 94.44\% & 88.89\% \\
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{figures/noise_robustness.pdf}
-    \caption{Évolution de l'accuracy (LOO CV) des classifieurs sur les MFCC Summary en fonction du niveau de bruit (SNR) injecté dans le signal audio brut.}
+    \caption{Évolution de l'accuracy moyenne (LOO CV $\pm$ 1 écart-type sur 10 réalisations indépendantes) des classifieurs sur les MFCC Summary en fonction du niveau de bruit (SNR) injecté dans le signal audio brut.}
     \label{fig:noise_robustness}
 \end{figure}
 
 \textbf{Analyse des performances et résilience :}
 \begin{itemize}
-    \item \textbf{La Régression Logistique est extrêmement robuste} : Elle conserve une précision de 90.74\% même sous un bruit intense (0\,dB). Sa nature linéaire limite le surapprentissage lié aux fluctuations aléatoires induites par le bruit. Les coefficients cepstraux moyennés dans le temps filtrent une grande partie du bruit additif blanc, permettant au classifieur linéaire de conserver sa frontière de décision.
-    \item \textbf{Effet de régularisation par le bruit} : Étonnamment, pour presque tous les modèles (LR, RF, Bagging, AdaBoost, MLP), l'ajout d'un bruit léger (20\,dB) améliore légèrement ou maintient les scores de généralisation. Ce phénomène classique est assimilable à de l'augmentation de données (\textit{noise injection as regularization}) qui empêche les classifieurs d'ajuster trop précisément les frontières sur le très petit échantillon de 54 exemples.
-    \item \textbf{Sensibilité relative du SVM et des arbres} : Le SVM RBF et la Random Forest montrent des baisses plus marquées à partir de 10\,dB (jusqu'à 85.19\% et 83.33\% respectivement à 0\,dB). Les frontières non linéaires complexes du SVM RBF et les décisions rigides par seuil des arbres de décision sont plus sensibles à la gigue des features causée par le bruit.
-    \item \textbf{Stabilité du MLP} : Le réseau de neurones multicouche maintient une excellente résilience (92.59\% $\rightarrow$ 96.30\% $\rightarrow$ 94.44\% $\rightarrow$ 88.89\%), démontrant la robustesse des représentations apprises par ses couches cachées.
+    \item \textbf{La Régression Logistique et le MLP sont extrêmement robustes} : Ils conservent respectivement une précision moyenne de 92.04\% et 91.30\% même sous un bruit très intense (0\,dB). Leur nature linéaire (pour LR) ou les représentations distribuées dans les couches cachées (pour le MLP) limitent le surapprentissage lié aux fluctuations aléatoires induites par le bruit. Les coefficients cepstraux moyennés dans le temps filtrent une grande partie du bruit additif blanc, permettant à ces modèles de conserver de solides performances.
+    \item \textbf{Effet de régularisation par le bruit} : Pour la majorité des modèles (LR, SVM, Bagging, AdaBoost, MLP), l'ajout d'un bruit léger (20\,dB ou 25\,dB) améliore les scores de généralisation par rapport au baseline ``Clean'' (ex. le SVM atteint 99.81\% à 25\,dB et 97.04\% à 20\,dB, le MLP atteint 97.59\% à 25\,dB). Ce phénomène est assimilable à de l'augmentation de données par injection de bruit (\textit{noise regularization}), qui perturbe l'optimisation juste assez pour empêcher les classifieurs d'ajuster trop précisément les frontières sur les 54 exemples d'entraînement.
+    \item \textbf{Sensibilité relative des modèles à base d'arbres} : Bien que la Random Forest et le Bagging Tree restent compétitifs (autour de 89\% et 88\% à 0\,dB), les arbres de décision individuels souffrent de décisions par seuil rigides qui oscillent facilement lorsque les features subissent la gigue causée par le bruit. L'agrégation par ensemble compense toutefois très bien ce comportement, comme en témoigne la faible variance des résultats ($\approx 2.7\%$).
 \end{itemize}
+
 
 %% ================================================================
 %% SECTION 8 : CONCLUSION

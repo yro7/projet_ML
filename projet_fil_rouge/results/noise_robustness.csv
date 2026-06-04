@@ -1,25 +1,43 @@
-Noise Level,SNR (dB),Classifier,Accuracy,Duration (s)
-Clean,inf,Logistic Regression,0.9630,3.022
-Clean,inf,SVM (RBF),0.9630,0.038
-Clean,inf,Random Forest,0.9444,0.897
-Clean,inf,Bagging Tree,0.8704,0.324
-Clean,inf,AdaBoost,0.7963,0.554
-Clean,inf,Neural Network,0.9259,0.322
-Low (20dB),20.0,Logistic Regression,0.9815,0.040
-Low (20dB),20.0,SVM (RBF),0.9630,0.028
-Low (20dB),20.0,Random Forest,0.9630,0.486
-Low (20dB),20.0,Bagging Tree,0.8889,0.336
-Low (20dB),20.0,AdaBoost,0.8333,0.681
-Low (20dB),20.0,Neural Network,0.9630,0.300
-Medium (10dB),10.0,Logistic Regression,0.9630,0.027
-Medium (10dB),10.0,SVM (RBF),0.9259,0.027
-Medium (10dB),10.0,Random Forest,0.8889,0.406
-Medium (10dB),10.0,Bagging Tree,0.9074,0.285
-Medium (10dB),10.0,AdaBoost,0.8889,0.471
-Medium (10dB),10.0,Neural Network,0.9444,0.291
-High (0dB),0.0,Logistic Regression,0.9074,0.027
-High (0dB),0.0,SVM (RBF),0.8519,0.026
-High (0dB),0.0,Random Forest,0.8333,0.435
-High (0dB),0.0,Bagging Tree,0.8333,0.290
-High (0dB),0.0,AdaBoost,0.7963,0.466
-High (0dB),0.0,Neural Network,0.8889,0.311
+Noise Level,SNR (dB),Classifier,Mean Accuracy,Std Accuracy,Realizations
+Clean,inf,Logistic Regression,0.9630,0.0000,1
+Clean,inf,SVM (RBF),0.9630,0.0000,1
+Clean,inf,Random Forest,0.9444,0.0000,1
+Clean,inf,Bagging Tree,0.8704,0.0000,1
+Clean,inf,AdaBoost,0.7963,0.0000,1
+Clean,inf,Neural Network,0.9259,0.0000,1
+25dB,25.0,Logistic Regression,0.9667,0.0074,10
+25dB,25.0,SVM (RBF),0.9981,0.0056,10
+25dB,25.0,Random Forest,0.9481,0.0199,10
+25dB,25.0,Bagging Tree,0.9037,0.0199,10
+25dB,25.0,AdaBoost,0.8722,0.0268,10
+25dB,25.0,Neural Network,0.9759,0.0119,10
+20dB,20.0,Logistic Regression,0.9759,0.0085,10
+20dB,20.0,SVM (RBF),0.9704,0.0091,10
+20dB,20.0,Random Forest,0.9333,0.0222,10
+20dB,20.0,Bagging Tree,0.9037,0.0111,10
+20dB,20.0,AdaBoost,0.9093,0.0280,10
+20dB,20.0,Neural Network,0.9667,0.0074,10
+15dB,15.0,Logistic Regression,0.9574,0.0167,10
+15dB,15.0,SVM (RBF),0.9426,0.0130,10
+15dB,15.0,Random Forest,0.9148,0.0189,10
+15dB,15.0,Bagging Tree,0.9130,0.0220,10
+15dB,15.0,AdaBoost,0.9019,0.0287,10
+15dB,15.0,Neural Network,0.9407,0.0111,10
+10dB,10.0,Logistic Regression,0.9500,0.0085,10
+10dB,10.0,SVM (RBF),0.9370,0.0123,10
+10dB,10.0,Random Forest,0.9167,0.0171,10
+10dB,10.0,Bagging Tree,0.9185,0.0277,10
+10dB,10.0,AdaBoost,0.9111,0.0216,10
+10dB,10.0,Neural Network,0.9481,0.0139,10
+5dB,5.0,Logistic Regression,0.9389,0.0220,10
+5dB,5.0,SVM (RBF),0.9185,0.0237,10
+5dB,5.0,Random Forest,0.9056,0.0175,10
+5dB,5.0,Bagging Tree,0.8944,0.0220,10
+5dB,5.0,AdaBoost,0.8759,0.0275,10
+5dB,5.0,Neural Network,0.9389,0.0220,10
+0dB,0.0,Logistic Regression,0.9204,0.0235,10
+0dB,0.0,SVM (RBF),0.8981,0.0290,10
+0dB,0.0,Random Forest,0.8981,0.0301,10
+0dB,0.0,Bagging Tree,0.8833,0.0275,10
+0dB,0.0,AdaBoost,0.8722,0.0472,10
+0dB,0.0,Neural Network,0.9130,0.0263,10
