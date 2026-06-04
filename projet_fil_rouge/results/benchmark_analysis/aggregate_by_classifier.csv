@@ -1,0 +1,11 @@
+classifier,rows,ok_rows,error_rows,mean_score,best_score,mean_duration_seconds,best_dataset,best_fit_method,best_preprocessor,best_classifier,best_task_id
+adaboost,27,27,0,0.628071,1.0,1.346,current,train_test,mfcc,adaboost,current__mfcc__adaboost__train_test
+logistic_regression,27,27,0,0.620152,1.0,0.901,current,train_test,mfcc_summary,logistic_regression,current__mfcc_summary__logistic_regression__train_test
+random_forest,27,27,0,0.611672,1.0,1.769,current,train_test,mfcc,random_forest,current__mfcc__random_forest__train_test
+bagging_logistic_regression,27,27,0,0.606435,1.0,1.118,current,train_test,mfcc_summary,bagging_logistic_regression,current__mfcc_summary__bagging_logistic_regression__train_test
+svm,27,27,0,0.56441,1.0,0.859,current,train_test,mfcc_summary,svm,current__mfcc_summary__svm__train_test
+bagging_svm,27,27,0,0.548946,1.0,0.937,current,train_test,mfcc_summary,bagging_svm,current__mfcc_summary__bagging_svm__train_test
+bagging_neural_network,27,27,0,0.622833,0.944444,4.621,current,manual_loo,mfcc_summary,bagging_neural_network,current__mfcc_summary__bagging_neural_network__manual_loo
+neural_network,27,27,0,0.575134,0.925926,1.601,current,manual_loo,mfcc_summary,neural_network,current__mfcc_summary__neural_network__manual_loo
+bagging_tree,27,27,0,0.618593,0.909091,0.964,current,train_test,stft,bagging_tree,current__stft__bagging_tree__train_test
+gradient_boosting,27,27,0,0.585609,0.851852,1.544,current,manual_loo,mfcc_summary,gradient_boosting,current__mfcc_summary__gradient_boosting__manual_loo

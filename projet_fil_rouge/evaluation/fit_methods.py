@@ -5,6 +5,7 @@ import time
 
 import numpy as np
 from sklearn.model_selection import ParameterGrid, StratifiedKFold
+from joblib import Parallel, delayed
 
 try:
     from .benchmark import run_grid_search, train_test_benchmark
@@ -209,6 +210,46 @@ def run_grid_search_fit_method(
         ]
 
 
+def _fit_single_train_test(
+    X, y, preprocessor_spec, classifier_spec, preprocessor_params, classifier_params, test_size, random_state, catch_errors
+):
+    started_at = time.perf_counter()
+    try:
+        result = train_test_benchmark(
+            X_raw=X,
+            y=y,
+            preprocessor=_spec_attr(preprocessor_spec, "name"),
+            preprocessor_params=preprocessor_params,
+            classifier=_spec_attr(classifier_spec, "classifier"),
+            classifier_params=classifier_params,
+            test_size=test_size,
+            random_state=random_state,
+        )
+        return _result_row(
+            fit_method="train_test",
+            preprocessor_spec=preprocessor_spec,
+            classifier_spec=classifier_spec,
+            score=result["test_metrics"]["accuracy"],
+            score_std=None,
+            n_features=result["X_train"].shape[1],
+            preprocessor_params=preprocessor_params,
+            classifier_params=classifier_params,
+            duration_seconds=time.perf_counter() - started_at,
+        )
+    except Exception as exc:
+        if not catch_errors:
+            raise
+        return _error_row(
+            fit_method="train_test",
+            preprocessor_spec=preprocessor_spec,
+            classifier_spec=classifier_spec,
+            duration_seconds=time.perf_counter() - started_at,
+            error=exc,
+            preprocessor_params=preprocessor_params,
+            classifier_params=classifier_params,
+        )
+
+
 def run_train_test_fit_method(
     X,
     y,
@@ -217,53 +258,77 @@ def run_train_test_fit_method(
     test_size=0.2,
     random_state=RANDOM_SEED,
     catch_errors=True,
+    n_jobs=1,
     **params,
 ):
-    """Run one train/test benchmark per explicit parameter combination."""
+    """Run one train/test benchmark per explicit parameter combination in parallel."""
 
-    rows = []
-    for preprocessor_params in _params_grid(_spec_attr(preprocessor_spec, "param_grid", {})):
-        for classifier_params in _params_grid(_spec_attr(classifier_spec, "param_grid", {})):
-            started_at = time.perf_counter()
-            try:
-                result = train_test_benchmark(
-                    X_raw=X,
-                    y=y,
-                    preprocessor=_spec_attr(preprocessor_spec, "name"),
-                    preprocessor_params=preprocessor_params,
-                    classifier=_spec_attr(classifier_spec, "classifier"),
-                    classifier_params=classifier_params,
-                    test_size=test_size,
-                    random_state=random_state,
-                )
-                rows.append(
-                    _result_row(
-                        fit_method="train_test",
-                        preprocessor_spec=preprocessor_spec,
-                        classifier_spec=classifier_spec,
-                        score=result["test_metrics"]["accuracy"],
-                        score_std=None,
-                        n_features=result["X_train"].shape[1],
-                        preprocessor_params=preprocessor_params,
-                        classifier_params=classifier_params,
-                        duration_seconds=time.perf_counter() - started_at,
-                    )
-                )
-            except Exception as exc:
-                if not catch_errors:
-                    raise
-                rows.append(
-                    _error_row(
-                        fit_method="train_test",
-                        preprocessor_spec=preprocessor_spec,
-                        classifier_spec=classifier_spec,
-                        duration_seconds=time.perf_counter() - started_at,
-                        error=exc,
-                        preprocessor_params=preprocessor_params,
-                        classifier_params=classifier_params,
-                    )
-                )
+    preprocessor_grids = _params_grid(_spec_attr(preprocessor_spec, "param_grid", {}))
+    classifier_grids = _params_grid(_spec_attr(classifier_spec, "param_grid", {}))
+
+    tasks = []
+    for preprocessor_params in preprocessor_grids:
+        for classifier_params in classifier_grids:
+            tasks.append((preprocessor_params, classifier_params))
+
+    rows = Parallel(n_jobs=n_jobs)(
+        delayed(_fit_single_train_test)(
+            X=X,
+            y=y,
+            preprocessor_spec=preprocessor_spec,
+            classifier_spec=classifier_spec,
+            preprocessor_params=p_params,
+            classifier_params=c_params,
+            test_size=test_size,
+            random_state=random_state,
+            catch_errors=catch_errors,
+        )
+        for p_params, c_params in tasks
+    )
     return rows
+
+
+def _fit_single_manual_loo(
+    X, y, preprocessor_spec, classifier_spec, preprocessor_params, classifier_params, catch_errors
+):
+    started_at = time.perf_counter()
+    try:
+        result = manual_loo_score(
+            X_raw=X,
+            y=y,
+            preprocessor=_spec_attr(preprocessor_spec, "name"),
+            preprocessor_params=preprocessor_params,
+            classifier=_spec_attr(classifier_spec, "classifier"),
+            classifier_params=classifier_params,
+        )
+        return _result_row(
+            fit_method="manual_loo",
+            preprocessor_spec=preprocessor_spec,
+            classifier_spec=classifier_spec,
+            score=result["score"],
+            score_std=np.std(result["fold_scores"]),
+            n_features=_feature_count_from_params(
+                X,
+                y,
+                _spec_attr(preprocessor_spec, "name"),
+                preprocessor_params,
+            ),
+            preprocessor_params=preprocessor_params,
+            classifier_params=classifier_params,
+            duration_seconds=time.perf_counter() - started_at,
+        )
+    except Exception as exc:
+        if not catch_errors:
+            raise
+        return _error_row(
+            fit_method="manual_loo",
+            preprocessor_spec=preprocessor_spec,
+            classifier_spec=classifier_spec,
+            duration_seconds=time.perf_counter() - started_at,
+            error=exc,
+            preprocessor_params=preprocessor_params,
+            classifier_params=classifier_params,
+        )
 
 
 def run_manual_loo_fit_method(
@@ -272,55 +337,31 @@ def run_manual_loo_fit_method(
     preprocessor_spec,
     classifier_spec,
     catch_errors=True,
+    n_jobs=1,
     **params,
 ):
-    """Run manual leave-one-out per explicit parameter combination."""
+    """Run manual leave-one-out per explicit parameter combination in parallel."""
 
-    rows = []
-    for preprocessor_params in _params_grid(_spec_attr(preprocessor_spec, "param_grid", {})):
-        for classifier_params in _params_grid(_spec_attr(classifier_spec, "param_grid", {})):
-            started_at = time.perf_counter()
-            try:
-                result = manual_loo_score(
-                    X_raw=X,
-                    y=y,
-                    preprocessor=_spec_attr(preprocessor_spec, "name"),
-                    preprocessor_params=preprocessor_params,
-                    classifier=_spec_attr(classifier_spec, "classifier"),
-                    classifier_params=classifier_params,
-                )
-                rows.append(
-                    _result_row(
-                        fit_method="manual_loo",
-                        preprocessor_spec=preprocessor_spec,
-                        classifier_spec=classifier_spec,
-                        score=result["score"],
-                        score_std=np.std(result["fold_scores"]),
-                        n_features=_feature_count_from_params(
-                            X,
-                            y,
-                            _spec_attr(preprocessor_spec, "name"),
-                            preprocessor_params,
-                        ),
-                        preprocessor_params=preprocessor_params,
-                        classifier_params=classifier_params,
-                        duration_seconds=time.perf_counter() - started_at,
-                    )
-                )
-            except Exception as exc:
-                if not catch_errors:
-                    raise
-                rows.append(
-                    _error_row(
-                        fit_method="manual_loo",
-                        preprocessor_spec=preprocessor_spec,
-                        classifier_spec=classifier_spec,
-                        duration_seconds=time.perf_counter() - started_at,
-                        error=exc,
-                        preprocessor_params=preprocessor_params,
-                        classifier_params=classifier_params,
-                    )
-                )
+    preprocessor_grids = _params_grid(_spec_attr(preprocessor_spec, "param_grid", {}))
+    classifier_grids = _params_grid(_spec_attr(classifier_spec, "param_grid", {}))
+
+    tasks = []
+    for preprocessor_params in preprocessor_grids:
+        for classifier_params in classifier_grids:
+            tasks.append((preprocessor_params, classifier_params))
+
+    rows = Parallel(n_jobs=n_jobs)(
+        delayed(_fit_single_manual_loo)(
+            X=X,
+            y=y,
+            preprocessor_spec=preprocessor_spec,
+            classifier_spec=classifier_spec,
+            preprocessor_params=p_params,
+            classifier_params=c_params,
+            catch_errors=catch_errors,
+        )
+        for p_params, c_params in tasks
+    )
     return rows
 
 

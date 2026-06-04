@@ -53,7 +53,17 @@ def _base_estimators():
     }
 
 
-def _base_param_grids(fast=False):
+def _base_param_grids(fast=False, full=False):
+    if full:
+        try:
+            from . import get_classifier_param_grid
+        except ImportError:
+            from classifiers import get_classifier_param_grid
+        return {
+            "logistic_regression": get_classifier_param_grid("logistic_regression"),
+            "svm": get_classifier_param_grid("svm"),
+            "neural_network": get_classifier_param_grid("neural_network"),
+        }
     return {
         "logistic_regression": {
             "C": _take([1.0, 0.1, 10.0], fast),
@@ -70,11 +80,11 @@ def _base_param_grids(fast=False):
     }
 
 
-def create_base_classifier_specs(fast=False):
+def create_base_classifier_specs(fast=False, full=False):
     """Return standalone base classifiers."""
 
     estimators = _base_estimators()
-    grids = _base_param_grids(fast=fast)
+    grids = _base_param_grids(fast=fast, full=full)
     return [
         ClassifierSpec(
             key="logistic_regression",
@@ -106,12 +116,12 @@ def create_base_classifier_specs(fast=False):
     ]
 
 
-def create_bagging_classifier_specs(fast=False):
+def create_bagging_classifier_specs(fast=False, full=False):
     """Return bagging meta-classifiers for each base classifier."""
 
-    n_estimators_grid = [5] if fast else [10, 25]
+    n_estimators_grid = [5] if fast else ([10, 50, 100] if full else [10, 25])
     specs = []
-    for base_spec in create_base_classifier_specs(fast=fast):
+    for base_spec in create_base_classifier_specs(fast=fast, full=full):
         bagging = BaggingClassifier(
             base_classifier=clone(base_spec.classifier),
             n_estimators=n_estimators_grid[0],
@@ -135,8 +145,56 @@ def create_bagging_classifier_specs(fast=False):
     return specs
 
 
-def create_preset_classifier_specs(fast=False):
+def create_preset_classifier_specs(fast=False, full=False):
     """Return ensemble presets that are not generic meta x base combinations."""
+
+    if full:
+        try:
+            from . import get_classifier_param_grid
+        except ImportError:
+            from classifiers import get_classifier_param_grid
+        return [
+            ClassifierSpec(
+                key="bagging_tree",
+                label="Bagging Tree",
+                classifier="bagging_tree",
+                param_grid=get_classifier_param_grid("bagging_tree"),
+                family="preset",
+                base_key="decision_tree",
+                meta_key="bagging",
+                comment="Existing shallow-tree bagging preset.",
+            ),
+            ClassifierSpec(
+                key="random_forest",
+                label="Random Forest",
+                classifier="random_forest",
+                param_grid=get_classifier_param_grid("random_forest"),
+                family="preset",
+                base_key="decision_tree",
+                meta_key="random_forest",
+                comment="Random forest preset.",
+            ),
+            ClassifierSpec(
+                key="gradient_boosting",
+                label="Gradient Boosting",
+                classifier="gradient_boosting",
+                param_grid=get_classifier_param_grid("gradient_boosting"),
+                family="preset",
+                base_key="decision_tree",
+                meta_key="gradient_boosting",
+                comment="Gradient boosting preset.",
+            ),
+            ClassifierSpec(
+                key="adaboost",
+                label="AdaBoost",
+                classifier="adaboost",
+                param_grid=get_classifier_param_grid("adaboost"),
+                family="preset",
+                base_key="decision_tree",
+                meta_key="adaboost",
+                comment="sklearn AdaBoost preset with shallow decision trees.",
+            ),
+        ]
 
     return [
         ClassifierSpec(
@@ -199,14 +257,15 @@ def create_all_classifier_specs(
     fast=False,
     include_bagging=True,
     include_presets=True,
+    full=False,
 ):
     """Return all classifier specs used by aggressive benchmarks."""
 
-    specs = create_base_classifier_specs(fast=fast)
+    specs = create_base_classifier_specs(fast=fast, full=full)
     if include_bagging:
-        specs.extend(create_bagging_classifier_specs(fast=fast))
+        specs.extend(create_bagging_classifier_specs(fast=fast, full=full))
     if include_presets:
-        specs.extend(create_preset_classifier_specs(fast=fast))
+        specs.extend(create_preset_classifier_specs(fast=fast, full=full))
     return specs
 
 
@@ -214,6 +273,7 @@ def classifier_specs_by_key(
     fast=False,
     include_bagging=True,
     include_presets=True,
+    full=False,
 ):
     """Return classifier specs indexed by key."""
 
@@ -223,5 +283,6 @@ def classifier_specs_by_key(
             fast=fast,
             include_bagging=include_bagging,
             include_presets=include_presets,
+            full=full,
         )
     }

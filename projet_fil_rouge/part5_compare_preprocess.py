@@ -36,13 +36,19 @@ class PreprocessorSpec:
     comment: str
 
 
-def make_preprocessor_specs(fast=False):
+def make_preprocessor_specs(fast=False, full=False):
     """Return curated, comparable preprocessing grids.
 
     The grids are intentionally smaller than the default project grids because
     Part V should compare many preprocessing families without making the
     notebook painfully slow.
     """
+
+    if full:
+        try:
+            from .utils.preprocessings import get_preprocessor_param_grid
+        except ImportError:
+            from utils.preprocessings import get_preprocessor_param_grid
 
     fft_max_values = [500] if fast else [500, 1_000]
     n_components = [5] if fast else [5, 10]
@@ -53,7 +59,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="FFT + PCA",
             name="fft_pca",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("fft_pca") if full else {
                 "idx_frequence_max": fft_max_values,
                 "n_components": n_components,
                 "scale": [True],
@@ -63,7 +69,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="FFT + Kernel PCA",
             name="fft_kernel_pca",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("fft_kernel_pca") if full else {
                 "idx_frequence_max": fft_max_values,
                 "n_components": n_components,
                 "kernel": ["rbf"] if fast else ["rbf", "cosine"],
@@ -75,7 +81,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="FFT + LDA",
             name="fft_lda",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("fft_lda") if full else {
                 "idx_frequence_max": fft_max_values,
                 "n_components": [None],
                 "scale": [True],
@@ -85,7 +91,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="FFT + NMF",
             name="fft_nmf",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("fft_nmf") if full else {
                 "idx_frequence_max": fft_max_values,
                 "n_components": n_components,
                 "scale": [True],
@@ -95,7 +101,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="FFT + SVD",
             name="fft_svd",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("fft_svd") if full else {
                 "idx_frequence_max": fft_max_values,
                 "n_components": n_components,
                 "scale": [True],
@@ -105,7 +111,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="STFT stats",
             name="stft",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("stft") if full else {
                 "stat": ["mean"] if fast else ["mean", "max"],
                 "idx_frequence_max": [500],
                 "nperseg": [400],
@@ -115,7 +121,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="MFCC stats",
             name="mfcc",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("mfcc") if full else {
                 "stat": ["mean"] if fast else ["mean", "max"],
                 "n_mfcc": mfcc_values,
             },
@@ -124,7 +130,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="MFCC summary",
             name="mfcc_summary",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("mfcc_summary") if full else {
                 "n_mfcc": mfcc_values,
                 "stats": [("mean", "std")],
                 "include_delta": [False] if fast else [False, True],
@@ -136,7 +142,7 @@ def make_preprocessor_specs(fast=False):
         PreprocessorSpec(
             label="Wavelet",
             name="wavelet",
-            param_grid={
+            param_grid=get_preprocessor_param_grid("wavelet") if full else {
                 "wavelet": ["db4"] if fast else ["db4", "sym5"],
                 "level": wavelet_levels,
                 "representation": ["packet_energy"] if fast else ["packet_energy", "stats"],

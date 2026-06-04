@@ -1,0 +1,41 @@
+{
+  "rows": 270,
+  "ok_rows": 270,
+  "error_rows": 0,
+  "task_ids": 270,
+  "datasets": [
+    "current"
+  ],
+  "preprocessors": [
+    "fft_kernel_pca",
+    "fft_lda",
+    "fft_nmf",
+    "fft_pca",
+    "fft_svd",
+    "mfcc",
+    "mfcc_summary",
+    "stft",
+    "wavelet"
+  ],
+  "classifiers": [
+    "adaboost",
+    "bagging_logistic_regression",
+    "bagging_neural_network",
+    "bagging_svm",
+    "bagging_tree",
+    "gradient_boosting",
+    "logistic_regression",
+    "neural_network",
+    "random_forest",
+    "svm"
+  ],
+  "fit_methods": [
+    "grid_search_cv",
+    "manual_loo",
+    "train_test"
+  ],
+  "mean_score": 0.598186,
+  "best_score": 1.0,
+  "mean_duration_seconds": 1.566,
+  "total_duration_seconds": 422.827
+}
