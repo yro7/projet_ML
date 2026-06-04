@@ -1,0 +1,25 @@
+Noise Level,SNR (dB),Classifier,Accuracy,Duration (s)
+Clean,inf,Logistic Regression,0.9630,3.022
+Clean,inf,SVM (RBF),0.9630,0.038
+Clean,inf,Random Forest,0.9444,0.897
+Clean,inf,Bagging Tree,0.8704,0.324
+Clean,inf,AdaBoost,0.7963,0.554
+Clean,inf,Neural Network,0.9259,0.322
+Low (20dB),20.0,Logistic Regression,0.9815,0.040
+Low (20dB),20.0,SVM (RBF),0.9630,0.028
+Low (20dB),20.0,Random Forest,0.9630,0.486
+Low (20dB),20.0,Bagging Tree,0.8889,0.336
+Low (20dB),20.0,AdaBoost,0.8333,0.681
+Low (20dB),20.0,Neural Network,0.9630,0.300
+Medium (10dB),10.0,Logistic Regression,0.9630,0.027
+Medium (10dB),10.0,SVM (RBF),0.9259,0.027
+Medium (10dB),10.0,Random Forest,0.8889,0.406
+Medium (10dB),10.0,Bagging Tree,0.9074,0.285
+Medium (10dB),10.0,AdaBoost,0.8889,0.471
+Medium (10dB),10.0,Neural Network,0.9444,0.291
+High (0dB),0.0,Logistic Regression,0.9074,0.027
+High (0dB),0.0,SVM (RBF),0.8519,0.026
+High (0dB),0.0,Random Forest,0.8333,0.435
+High (0dB),0.0,Bagging Tree,0.8333,0.290
+High (0dB),0.0,AdaBoost,0.7963,0.466
+High (0dB),0.0,Neural Network,0.8889,0.311
