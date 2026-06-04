@@ -1,0 +1,23 @@
+{
+  "lr_best_params": "{'clf__C': 0.1, 'fft__idx_frequence_max': 1000, 'pca__n_components': 20}",
+  "lr_loo_score": "0.7907",
+  "lr_test_score": "0.8182",
+  "lr_scaled_loo_score": "0.7674",
+  "lr_scaled_test_score": "0.8182",
+  "svm_best_params": "{'clf__C': 10.0, 'clf__gamma': 'scale', 'fft__idx_frequence_max': 3000, 'pca__n_components': 10}",
+  "svm_loo_score": "0.6977",
+  "svm_test_score": "0.6364",
+  "bag_acc": "0.4545",
+  "bag_mean_indiv": "0.6018",
+  "rf_acc": "0.6364",
+  "ada_scratch_acc": "0.7273",
+  "ada_sklearn_acc": "0.8182",
+  "ada_best_params": "{'learning_rate': 0.1, 'n_estimators': 100}",
+  "gb_acc": "0.9091",
+  "gb_best_params": "{'learning_rate': 0.1, 'n_estimators': 100}",
+  "nn_acc": "0.6296",
+  "nn_reg_acc": "0.6667",
+  "cnn_acc": "0.7037",
+  "benchmark_total": "35668",
+  "benchmark_ok": "34886"
+}
