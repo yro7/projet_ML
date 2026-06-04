@@ -1,0 +1,10 @@
+preprocessor,rows,ok_rows,error_rows,mean_score,best_score,mean_duration_seconds,best_dataset,best_fit_method,best_preprocessor,best_classifier,best_task_id
+mfcc_summary,30,30,0,0.911504,1.0,3.629,current,train_test,mfcc_summary,logistic_regression,current__mfcc_summary__logistic_regression__train_test
+mfcc,30,30,0,0.699551,1.0,1.854,current,train_test,mfcc,random_forest,current__mfcc__random_forest__train_test
+wavelet,30,30,0,0.594108,1.0,1.359,current,train_test,wavelet,logistic_regression,current__wavelet__logistic_regression__train_test
+stft,30,30,0,0.582492,0.909091,1.183,current,train_test,stft,bagging_tree,current__stft__bagging_tree__train_test
+fft_svd,30,30,0,0.572447,0.727273,1.216,current,train_test,fft_svd,bagging_tree,current__fft_svd__bagging_tree__train_test
+fft_pca,30,30,0,0.552862,0.727273,1.201,current,train_test,fft_pca,bagging_tree,current__fft_pca__bagging_tree__train_test
+fft_nmf,30,30,0,0.551515,0.636364,1.292,current,train_test,fft_nmf,logistic_regression,current__fft_nmf__logistic_regression__train_test
+fft_lda,30,30,0,0.462682,0.636364,1.179,current,train_test,fft_lda,neural_network,current__fft_lda__neural_network__train_test
+fft_kernel_pca,30,30,0,0.45651,0.636364,1.181,current,train_test,fft_kernel_pca,bagging_logistic_regression,current__fft_kernel_pca__bagging_logistic_regression__train_test

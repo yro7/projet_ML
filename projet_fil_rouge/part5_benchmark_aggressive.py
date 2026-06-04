@@ -54,13 +54,13 @@ def build_specs(args):
     """Build and select the existing library specs requested by the CLI."""
 
     preprocessor_specs = select_specs(
-        make_preprocessor_specs(fast=args.fast),
+        make_preprocessor_specs(fast=args.fast, full=getattr(args, "full", False)),
         requested_keys=args.preprocessors,
         key_attr="name",
         label="preprocessors",
     )
     classifier_specs = select_specs(
-        create_all_classifier_specs(fast=args.fast),
+        create_all_classifier_specs(fast=args.fast, full=getattr(args, "full", False)),
         requested_keys=args.classifiers,
         key_attr="key",
         label="classifiers",
@@ -143,6 +143,11 @@ def parse_args():
         description="Run Part V over dataset x preprocessor x classifier x fit method."
     )
     parser.add_argument("--fast", action="store_true")
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Use full default project grids instead of compact grids.",
+    )
     parser.add_argument("--cv", type=int, default=6)
     parser.add_argument("--n-jobs", type=int, default=1)
     parser.add_argument("--test-size", type=float, default=0.2)

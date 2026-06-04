@@ -1,0 +1,2 @@
+dataset,rows,ok_rows,error_rows,mean_score,best_score,mean_duration_seconds,best_dataset,best_fit_method,best_preprocessor,best_classifier,best_task_id
+current,270,270,0,0.598186,1.0,1.566,current,train_test,mfcc,random_forest,current__mfcc__random_forest__train_test

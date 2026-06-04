@@ -1,0 +1,4 @@
+fit_method,rows,ok_rows,error_rows,mean_score,best_score,mean_duration_seconds,best_dataset,best_fit_method,best_preprocessor,best_classifier,best_task_id
+train_test,90,90,0,0.616162,1.0,0.077,current,train_test,mfcc,random_forest,current__mfcc__random_forest__train_test
+grid_search_cv,90,90,0,0.60144,0.962963,0.548,current,grid_search_cv,mfcc_summary,logistic_regression,current__mfcc_summary__logistic_regression__grid_search_cv
+manual_loo,90,90,0,0.576955,0.962963,4.073,current,manual_loo,mfcc_summary,logistic_regression,current__mfcc_summary__logistic_regression__manual_loo
