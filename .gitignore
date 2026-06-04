@@ -1,1 +1,2 @@
-__pycache__*benchmark.log
+__pycache__/
+*.log
