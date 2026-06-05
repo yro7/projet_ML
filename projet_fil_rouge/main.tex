@@ -917,7 +917,43 @@ Réseau de neurones (MLP) & 92.59\% & 96.67\% $\pm$ 0.74\% & 94.81\% $\pm$ 1.39\
     \item \textbf{Effet de régularisation par le bruit} : Pour la majorité des modèles (LR, SVM, Bagging, AdaBoost, MLP), l'ajout d'un bruit léger (20\,dB ou 25\,dB) améliore les scores de généralisation par rapport au baseline ``Clean'' (ex. le SVM atteint 99.81\% à 25\,dB et 97.04\% à 20\,dB, le MLP atteint 97.59\% à 25\,dB). Ce phénomène est assimilable à de l'augmentation de données par injection de bruit (\textit{noise regularization}), qui perturbe l'optimisation juste assez pour empêcher les classifieurs d'ajuster trop précisément les frontières sur les 54 exemples d'entraînement.
     \item \textbf{Sensibilité relative des modèles à base d'arbres} : Bien que la Random Forest et le Bagging Tree restent compétitifs (autour de 89\% et 88\% à 0\,dB), les arbres de décision individuels souffrent de décisions par seuil rigides qui oscillent facilement lorsque les features subissent la gigue causée par le bruit. L'agrégation par ensemble compense toutefois très bien ce comportement, comme en témoigne la faible variance des résultats ($\approx 2.7\%$).
 \end{itemize}
+\subsection{Reconnaissance avec un plus grand nombre de classes (13 ordres vocaux)}
 
+Pour évaluer la capacité de notre système à gérer une complexité de classification supérieure, nous avons introduit un nouveau jeu de données personnel synthétique (\texttt{sons\_ia}) composé de \textbf{130 signaux audio} (13 classes distinctes $\times$ 10 exemples par classe) échantillonnés à 16\,kHz :
+\begin{center}
+\textit{actionner}, \textit{allume}, \textit{autorisation}, \textit{bas}, \textit{danger}, \textit{demitour}, \textit{hausse}, \textit{mode}, \textit{recule}, \textit{statut}, \textit{stop}, \textit{tournegauche}, \textit{vite}.
+\end{center}
+
+Chaque signal a été traité en extrayant les caractéristiques \textbf{MFCC Summary} adaptées à la fréquence de 16\,kHz, puis nous avons évalué nos classifieurs principaux en validation croisée Leave-One-Out (LOO CV). Les résultats sont synthétisés dans le tableau ci-dessous et la figure~\ref{fig:multi_class_benchmark}.
+
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+\textbf{Classifieur} & \textbf{Accuracy (LOO CV)} \\
+\midrule
+SVM (RBF) & \textbf{100.00\%} \\
+Random Forest & \textbf{100.00\%} \\
+Régression Logistique & 99.23\% \\
+Réseau de neurones (MLP) & 99.23\% \\
+Bagging Tree & 91.54\% \\
+AdaBoost & 73.08\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/multi_class_benchmark.pdf}
+    \caption{Comparaison des performances des classifieurs (LOO CV) sur le jeu de données sons\_ia de 13 classes.}
+    \label{fig:multi_class_benchmark}
+\end{figure}
+
+\textbf{Analyse des performances et impact de la structure des données :}
+\begin{itemize}
+    \item \textbf{Performances exceptionnelles (quasi-parfaites)} : Le SVM RBF et la Random Forest atteignent une précision parfaite de 100.00\%, suivis de très près par la Régression Logistique et le MLP (99.23\%). Bien que le nombre de classes soit passé de 3 à 13 (ce qui augmente significativement la complexité théorique du problème), les performances sont nettement supérieures à celles obtenues sur le dataset de base de 54 exemples.
+    \item \textbf{Explication - Origine synthétique des données (IA)} : Ces enregistrements proviennent d'une synthèse vocale (Text-To-Speech) et ont été générés dans des conditions acoustiques identiques (sans bruit, avec le même timbre de voix et le même rythme de diction). La variance intra-classe est donc extrêmement faible, et les classes sont géométriquement très bien séparées dans l'espace de représentation MFCC. C'est un excellent exemple de l'importance de la distribution des données : un problème à 13 classes avec une voix unique et stable est beaucoup plus simple à résoudre pour un modèle de Machine Learning qu'un problème à 3 classes enregistré par 18 locuteurs humains différents (dont la variabilité de genre, d'intonation et d'accentuation induit de nombreuses confusions).
+    \item \textbf{AdaBoost reste en retrait} : Le modèle AdaBoost (73.08\%) a plus de mal à converger vers une solution optimale sur 13 classes, ce qui s'explique par sa sensibilité accrue à la complexité des frontières multiclasses lorsque les estimateurs faibles sous-jacents (arbres peu profonds) manquent de capacité de modélisation par rapport à des modèles naturellement multiclasses ou plus complexes (MLP, SVM RBF, Random Forest).
+\end{itemize}
 
 %% ================================================================
 %% SECTION 8 : CONCLUSION
@@ -930,7 +966,7 @@ Ce projet nous a permis d'explorer en profondeur la chaîne complète d'un syst�
 \textbf{Principaux enseignements :}
 
 \begin{enumerate}
-    \item \textbf{Le preprocessing est roi.} Les MFCC Summary (combinant moyenne et écart-type des coefficients cepstraux) dominent systématiquement toutes les représentations spectrales alternatives (FFT+PCA, STFT, Wavelet). La représentation perceptuelle de Mel est naturellement adaptée à la discrimination de parole.
+    \item \textbf{Le preprocessing a le plus grand impact sur la qualité du modèle} Les MFCC Summary (combinant moyenne et écart-type des coefficients cepstraux) dominent systématiquement toutes les représentations spectrales alternatives (FFT+PCA, STFT, Wavelet). La représentation perceptuelle de Mel est naturellement adaptée à la discrimination de parole.
     
     \item \textbf{Complexité $\neq$ performance.} La régression logistique, le modèle le plus simple, couplée aux MFCC Summary atteint 96.2\% — surpassant les SVM, les ensembles et les réseaux de neurones avec des prétraitements inadaptés. Cela illustre le principe selon lequel un bon feature engineering peut rendre un classifier simple plus performant qu'un modèle complexe sur de mauvaises features.
     

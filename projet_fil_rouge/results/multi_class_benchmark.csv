@@ -1,0 +1,7 @@
+Classifier,Accuracy,Std Accuracy,Duration (s)
+Logistic Regression,0.9923,0.0874,2.894
+SVM (RBF),1.0000,0.0000,0.062
+Random Forest,1.0000,0.0000,1.246
+Bagging Tree,0.9154,0.2783,0.947
+AdaBoost,0.7308,0.4436,1.498
+Neural Network,0.9923,0.0874,1.180

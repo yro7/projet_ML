@@ -702,6 +702,7 @@ savefig(fig, "benchmark_by_fit_method.pdf")
 print("\n[Fig 17] Noise robustness benchmark...")
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import BaggingClassifier as SkBaggingClassifier
 
 def add_noise_to_dataset(X, snr_db, random_state=RANDOM_SEED):
     if snr_db is None or np.isinf(snr_db):
@@ -735,7 +736,7 @@ noise_classifiers = {
     "Logistic Regression": LogisticRegression(C=1.0, max_iter=1000, random_state=RANDOM_SEED),
     "SVM (RBF)": SVC(C=10.0, kernel="rbf", gamma="scale", random_state=RANDOM_SEED),
     "Random Forest": RandomForestClassifier(n_estimators=100, random_state=RANDOM_SEED),
-    "Bagging Tree": BaggingClassifier(
+    "Bagging Tree": SkBaggingClassifier(
         estimator=DecisionTreeClassifier(max_depth=5, random_state=RANDOM_SEED),
         n_estimators=50,
         random_state=RANDOM_SEED
@@ -815,8 +816,93 @@ fig_png.savefig(FIGURES_DIR / "noise_robustness.png", dpi=150, bbox_inches="tigh
 plt.close(fig_png)
 
 # ============================================================
+# Fig 18: 13-Class Dataset Benchmark (sons_ia)
+# ============================================================
+print("\n[Fig 18] 13-class dataset benchmark...")
+import librosa
+
+def load_13_class_dataset():
+    from projet_fil_rouge.data import energy_trim
+    dataset_dir = Path(__file__).resolve().parent / "sons_perso" / "sons_ia"
+    wav_paths = sorted(dataset_dir.glob("**/*.wav"))
+    words = sorted(list(set(p.parent.name for p in wav_paths)))
+    
+    records = []
+    labels = []
+    for p in wav_paths:
+        label = words.index(p.parent.name)
+        y_audio, sr_audio = librosa.load(str(p), sr=16000)
+        records.append(y_audio)
+        labels.append(label)
+        
+    min_len = min(len(r) for r in records)
+    X_stacked = np.vstack([energy_trim(r, min_len) for r in records])
+    y_labels = np.array(labels)
+    return X_stacked, y_labels, words
+
+
+X_multi, y_multi, multi_words = load_13_class_dataset()
+X_multi_features = preprocess_mfcc_summary(X_multi, sr=16000, n_mfcc=13)
+
+multi_classifiers = {
+    "Logistic Regression": LogisticRegression(C=1.0, max_iter=1000, random_state=RANDOM_SEED),
+    "SVM (RBF)": SVC(C=10.0, kernel="rbf", gamma="scale", random_state=RANDOM_SEED),
+    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=RANDOM_SEED),
+    "Bagging Tree": SkBaggingClassifier(
+        estimator=DecisionTreeClassifier(max_depth=5, random_state=RANDOM_SEED),
+        n_estimators=50,
+        random_state=RANDOM_SEED
+    ),
+    "AdaBoost": AdaBoostClassifier(
+        estimator=DecisionTreeClassifier(max_depth=2, random_state=RANDOM_SEED),
+        n_estimators=100,
+        learning_rate=0.1,
+        random_state=RANDOM_SEED
+    ),
+    "Neural Network": MLPClassifier(
+        hidden_layer_sizes=(32,),
+        alpha=0.001,
+        max_iter=1000,
+        random_state=RANDOM_SEED
+    )
+}
+
+
+multi_results = []
+for clf_name, clf in multi_classifiers.items():
+    pipe = Pipeline([("scaler", StandardScaler()), ("clf", clf)])
+    scs = cross_val_score(pipe, X_multi_features, y_multi, cv=LeaveOneOut(), n_jobs=-1)
+    mean_acc = np.mean(scs)
+    multi_results.append((clf_name, mean_acc))
+
+# Sort results for plotting
+multi_results_sorted = sorted(multi_results, key=lambda x: x[1], reverse=True)
+clf_names_multi = [r[0] for r in multi_results_sorted]
+clf_accs_multi = [r[1] for r in multi_results_sorted]
+
+fig, ax = plt.subplots(figsize=(10, 6))
+colors_multi = ["#2ecc71", "#3498db", "#9b59b6", "#34495e", "#e67e22", "#e74c3c"]
+bars = ax.bar(clf_names_multi, clf_accs_multi, color=colors_multi[:len(clf_names_multi)], width=0.5, edgecolor="black", linewidth=0.5)
+
+for bar, acc in zip(bars, clf_accs_multi):
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01, f"{acc:.2%}",
+            ha="center", va="bottom", fontweight="bold", fontsize=10)
+
+ax.set_ylabel("Accuracy (LOO CV)", fontsize=12, fontweight="bold")
+ax.set_title("Reconnaissance de Commandes Vocales (13 Classes x 10 echantillons)", fontsize=13, fontweight="bold", pad=15)
+ax.set_ylim(0, 1.15)
+ax.grid(axis="y", linestyle="--", alpha=0.5)
+plt.tight_layout()
+
+savefig(fig, "multi_class_benchmark.pdf")
+fig_png = plt.figure(fig.number)
+fig_png.savefig(FIGURES_DIR / "multi_class_benchmark.png", dpi=150, bbox_inches="tight")
+plt.close(fig_png)
+
+# ============================================================
 # Store all numerical results for LaTeX
 # ============================================================
+
 
 results = {
     "lr_best_params": str(grid_search.best_params_),
