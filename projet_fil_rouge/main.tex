@@ -89,7 +89,7 @@
 		
 		Nous explorons successivement plusieurs familles de méthodes de classification — régression logistique multiclasse, machines à vecteurs de support (SVM), méthodes d'ensemble (Bagging, AdaBoost, Gradient Boosting, Random Forest) et réseaux de neurones (FNN et CNN avec PyTorch) — combinées à différentes méthodes de prétraitement spectral (FFT+PCA, STFT, MFCC).
 		
-		Notre étude personnelle (Partie V) constitue un benchmark exhaustif de \textbf{35\,669 expériences} croisant 9 méthodes de prétraitement, 10 classifiers et 3 méthodes d'évaluation. Les résultats montrent que la combinaison \textbf{MFCC Summary × Régression Logistique} atteint les meilleures performances avec une accuracy moyenne de 96.2\% en validation croisée.
+		Notre étude personnelle (Partie V) constitue un benchmark exhaustif de \textbf{35\,668 expériences} croisant 9 méthodes de prétraitement, 10 classifiers et 3 méthodes d'évaluation. Les résultats montrent que la combinaison \textbf{MFCC Summary × Régression Logistique} atteint les meilleures performances avec une accuracy moyenne de 96.2\% en validation croisée.
 	\end{minipage}
 \end{center}
 
@@ -751,7 +751,7 @@ Classifiers & 10 & LR, SVM, NN, Bagging (LR/SVM/NN/Tree), \\
  & & Random Forest, AdaBoost, Gradient Boosting \\
 Fit methods & 3 & GridSearchCV, Train/Test, Manual LOO \\
 \midrule
-\textbf{Total} & \textbf{35\,669} & expériences (avec grilles d'hyperparamètres) \\
+\textbf{Total} & \textbf{35\,668} & expériences (avec grilles d'hyperparamètres) \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -801,14 +801,14 @@ Chaque expérience teste une combinaison spécifique d'hyperparamètres pour le 
 \toprule
 \textbf{Rang} & \textbf{Classifier} & \textbf{N runs} & \textbf{Acc. moy.} & \textbf{Acc. max} \\
 \midrule
-1 & \textbf{Random Forest} & 2\,833 & \textbf{0.655} & 1.000 \\
+1 & \textbf{Random Forest} & 2\,833 & \textbf{0.654} & 1.000 \\
 2 & Bagging NN & 873 & 0.653 & 1.000 \\
 3 & Neural Network & 4\,197 & 0.624 & 1.000 \\
 4 & AdaBoost & 2\,111 & 0.621 & 1.000 \\
 5 & Gradient Boosting & 2\,111 & 0.608 & 1.000 \\
 6 & Bagging Tree & 2\,127 & 0.607 & 1.000 \\
 7 & Bagging LR & 3\,507 & 0.579 & 1.000 \\
-8 & Logistic Regression & 1\,429 & 0.569 & 1.000 \\
+8 & Logistic Regression & 1\,429 & 0.568 & 1.000 \\
 9 & Bagging SVM & 11\,145 & 0.387 & 1.000 \\
 10 & SVM & 4\,553 & 0.366 & 1.000 \\
 \bottomrule
@@ -835,7 +835,7 @@ MFCC Summary $\times$ Logistic Regression & \textbf{0.962} & 1.000 & 41 \\
 MFCC Summary $\times$ Bagging LR & 0.948 & 1.000 & 121 \\
 MFCC Summary $\times$ Random Forest & 0.928 & 1.000 & 97 \\
 MFCC Summary $\times$ Bagging NN & 0.925 & 1.000 & 97 \\
-MFCC Summary $\times$ Neural Network & 0.909 & 1.000 & 145 \\
+MFCC Summary $\times$ Neural Network & 0.908 & 1.000 & 145 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -856,14 +856,14 @@ MFCC Summary $\times$ Neural Network & 0.909 & 1.000 & 145 \\
 \toprule
 \textbf{Méthode} & \textbf{Acc. moy.} & \textbf{Acc. max} & \textbf{N runs} \\
 \midrule
-GridSearchCV & \textbf{0.796} & 0.982 & 90 \\
+GridSearchCV & \textbf{0.796} & 0.981 & 90 \\
 Train/Test & 0.540 & 1.000 & 18\,197 \\
-Manual LOO & 0.473 & 0.982 & 16\,599 \\
+Manual LOO & 0.473 & 0.981 & 16\,599 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\textbf{Analyse :} Le GridSearchCV produit les scores moyens les plus élevés car il sélectionne les meilleurs hyperparamètres par validation croisée. Cependant, son score maximum (0.982) est inférieur aux 1.000 du Train/Test, car il est honnête (le score rapporté est le score de validation, pas celui du train). Les scores de 1.000 obtenus par Train/Test reflètent du surapprentissage : avec seulement 11 échantillons de test, obtenir 100\% est autant un artefact statistique qu'une mesure de performance.
+\textbf{Analyse :} Le GridSearchCV produit les scores moyens les plus élevés car il sélectionne les meilleurs hyperparamètres par validation croisée. Cependant, son score maximum (0.981) est inférieur aux 1.000 du Train/Test, car il est honnête (le score rapporté est le score de validation, pas celui du train). Les scores de 1.000 obtenus par Train/Test reflètent du surapprentissage : avec seulement 11 échantillons de test, obtenir 100\% est autant un artefact statistique qu'une mesure de performance.
 
 \subsection{Discussion et limites}
 
@@ -872,7 +872,7 @@ Manual LOO & 0.473 & 0.982 & 16\,599 \\
     \item \textbf{Nombre de classes} : Avec seulement 3 classes, le taux de base (classifieur aléatoire) est déjà de 33.3\%. Un score de 50\% n'est que marginalement meilleur que le hasard.
     \item \textbf{Surapprentissage sur le test} : Les scores de 1.000 en Train/Test (11 échantillons) ne sont pas significatifs statistiquement.
     \item \textbf{Prédominance du preprocessing} : L'écart de performance entre les preprocessors (0.45 à 0.79 en moyenne) est bien plus large que l'écart entre les classifiers (0.37 à 0.65), confirmant que la représentation des données est le facteur déterminant.
-    \item \textbf{782 erreurs} (sur 35\,669 runs) — essentiellement des \texttt{ValueError} dans les combinaisons Wavelet $\times$ AdaBoost dues à des conflits de buffers.
+    \item \textbf{782 erreurs} (sur 35\,668 runs) — essentiellement des \texttt{ValueError} dans les combinaisons Wavelet $\times$ AdaBoost dues à des conflits de buffers.
 \end{itemize}
 
 \subsection{Résilience au bruit des classifieurs (Données Synthétiques)}
@@ -977,6 +977,6 @@ Ce projet nous a permis d'explorer en profondeur la chaîne complète d'un syst�
     \item \textbf{L'évaluation honnête est cruciale.} La validation croisée (LOO ou k-fold) avec prétraitement par fold évite le data leakage et donne des estimations réalistes, contrairement au simple train/test split qui peut produire des scores artificiellement parfaits sur 11 échantillons.
 \end{enumerate}
 
-\textbf{Perspectives :} L'extension à davantage de classes (13 commandes disponibles), l'ajout de données personnelles, et l'utilisation de techniques d'augmentation de données audio (ajout de bruit, time stretching) permettraient de tester ces méthodes dans des conditions plus réalistes.
+\textbf{Perspectives :} Bien que nous ayons initié l'évaluation sur 13 classes (avec des sons de synthèse d'IA) et étudié la robustesse face au bruit, l'évaluation sur un jeu de données humain multi-locuteurs à 13 classes ainsi que l'utilisation de techniques plus complexes d'augmentation de données audio (comme le pitch shifting ou le time stretching) permettraient d'étendre encore la robustesse de ces modèles dans des conditions réelles de vol.
 
 \end{document}
